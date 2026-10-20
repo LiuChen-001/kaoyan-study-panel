@@ -28,7 +28,7 @@ test('English add action, layout, full-precision totals, editing survive restart
   expect((await saved(page)).english.articles).toEqual([]);
   await add(page, 'how to study');
   await cell(page, 'A1').click();
-  await expect(input(page, 'C3')).toHaveValue('0');
+  await expect(input(page, 'C3')).toHaveValue('-');
   expect((await saved(page)).english.articles[0].memory).toBeNull();
   await input(page, 'C3').fill('88.999999'); await input(page, 'C3').press('Tab');
   await expect(input(page, 'C3')).toHaveValue('88');

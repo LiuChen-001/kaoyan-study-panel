@@ -40,6 +40,8 @@ try {
   const legacy = { ...initialState(data), version: 11 };
   legacy.wrongQuestions['cs:F21'] = '迁移前 P005：002';
   legacy.memory['math:F5'] = review(initializeMemory(80, yesterday), 60, date);
+  legacy.memory['math:G5'] = initializeMemory(20, date);
+  legacy.memory['math:H5'] = initializeMemory(40, date);
   const prior = review(initializeMemory(100, beforeYesterday), 100, yesterday);
   legacy.memory['cs:F21'] = review(prior, 100, date);
   const migrated = migrateState(data, legacy);
@@ -53,6 +55,10 @@ try {
   page.on('pageerror', e => errors.push(e.message));
   const input = page.locator('[data-node]').first();
   assert.equal(await input.inputValue(), '60.00');
+  assert.equal(await page.locator('[data-cell="G5"]').evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(255, 217, 223)');
+  assert.equal(await page.locator('[data-cell="H5"]').evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(255, 224, 178)');
+  assert.equal(await page.locator('[data-cell="I5"]').evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(238, 238, 238)');
+  assert.equal(await page.locator('[data-edit="I5"]').inputValue(), '-');
   await page.waitForFunction(() => document.querySelector('#save-status')?.textContent === '已保存到本机', null, { polling: 100 });
   assert.deepEqual(JSON.parse(await readFile(join(appDir, 'progress-before-rich-text-v11.json'), 'utf8')), legacy);
   const actualMigration = JSON.parse(await readFile(join(appDir, 'progress.json'), 'utf8'));

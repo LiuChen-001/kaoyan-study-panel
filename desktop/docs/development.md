@@ -69,7 +69,7 @@ npm run build
 | `tests/forgetting.spec.js` | 模拟北京时间午夜、禁止降低、未编辑不复习、离线重开、浏览器自动保存与迁移 | 实机时钟故障、断电写入恢复 |
 | `scripts/native-smoke.mjs` | 隔离 WebView、v11 → v12 错题格式迁移（不改曲线）与题号保留、独立备份、横向填充及重启、英语精度与 Rust 保存、关闭提交、重开不重置 | 多进程并发及所有文件系统故障 |
 
-1.9.0 当前有 40 项 Node 测试和 27 项 Playwright 测试；增删用例后更新覆盖说明，不把固定数量当作唯一验收标准。Playwright 会启动/复用 1420 端口服务，运行前确认复用的是本项目。
+1.10.0 当前有 40 项 Node 测试和 32 项 Playwright 测试；增删用例后更新覆盖说明，不把固定数量当作唯一验收标准。Playwright 会启动/复用 1420 端口服务，运行前确认复用的是本项目。
 
 原生验证必须按顺序执行，并逐步确认退出码成功：
 
@@ -110,8 +110,8 @@ npm run extract
 
 ```powershell
 Get-FileHash -LiteralPath 'src-tauri/target/release/kaoyan-panel-desktop.exe'
-Get-FileHash -LiteralPath '../桌面应用/考研综合面板-1.9.0.exe'
-(Get-Item -LiteralPath '../桌面应用/考研综合面板-1.9.0.exe').VersionInfo.ProductVersion
+Get-FileHash -LiteralPath '../桌面应用/考研综合面板-1.10.0.exe'
+(Get-Item -LiteralPath '../桌面应用/考研综合面板-1.10.0.exe').VersionInfo.ProductVersion
 ```
 
 不要用单元测试通过替代 exe 启动/存盘验证，也不要把生成 exe 等同于安装包、代码签名、自动更新或跨系统兼容性已完成。

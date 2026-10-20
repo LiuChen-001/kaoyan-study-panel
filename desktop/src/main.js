@@ -6,7 +6,7 @@
 import data from './data.json';
 import { initialState, validateState, migrateState } from './model.js';
 import { today, review } from './memory.js';
-import { columnName, coordinates, sheetValues, displayValue, sheetLayout, sheetNames } from './workbook.js';
+import { columnName, coordinates, sheetValues, displayValue as formattedValue, sheetLayout, sheetNames } from './workbook.js';
 import { loadState, saveState, loadMigrationHistory } from './storage.js';
 import { isTauri } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
@@ -36,12 +36,17 @@ let showRetention = false;
 
 const memoryFor = binding => binding?.type === 'article-mastery'
   ? state.english.articles.find(article => article.id === binding.id)?.memory : state.memory[binding?.id];
+const reviewState = cell => !memoryFor(cell.binding) ? 'unlearned' : cell.value < 30 ? 'red' : cell.value <= 50 ? 'orange' : 'normal';
+const reviewNote = cell => ({ unlearned: '未初学，输入掌握度开始学习', red: '需要复习：掌握度低于30', orange: '建议复习：掌握度30至50', normal: '掌握度高于50' })[reviewState(cell)];
+function displayValue(name, address, cell) {
+  return isMastery(cell?.binding) && !memoryFor(cell.binding) ? '-' : formattedValue(name, address, cell);
+}
 const retentionText = cell => {
   const memory = memoryFor(cell?.binding);
   return memory ? `${(memory.retentionPerDay * 100).toFixed(2)}%` : '—';
 };
 function retentionReadout(address, cell) {
-  return `<span class="mastery-readout" aria-hidden="true"><span class="mastery-value">${escape(displayValue(activeSheet, address, cell))}</span><span class="retention-rate">（${retentionText(cell)}）</span></span>`;
+  return `<span class="mastery-readout" aria-hidden="true"><span class="mastery-value">${escape(displayValue(activeSheet, address, cell))}</span>${memoryFor(cell.binding) ? `<span class="retention-rate">（${retentionText(cell)}）</span>` : ''}</span>`;
 }
 function fitRetentionReadouts() {
   for (const readout of app.querySelectorAll('.mastery-readout')) {
@@ -136,10 +141,13 @@ function refreshValues(date = today()) {
     const input = td.querySelector('input');
     if (input && input !== document.activeElement) input.value = displayValue(activeSheet, address, item);
     if (input && item.binding) input.setAttribute('aria-label', item.binding.label + (isMastery(item.binding) ? '掌握度' : ''));
+    if (isMastery(item.binding)) {
+      td.dataset.review = reviewState(item);
+      input?.setAttribute('aria-description', reviewNote(item) + (showRetention ? `，每日记忆率 ${retentionText(item)}` : ''));
+    }
     if (showRetention && isMastery(item.binding)) {
       td.querySelector('.mastery-readout')?.remove();
       td.insertAdjacentHTML('beforeend', retentionReadout(address, item));
-      input?.setAttribute('aria-description', `每日记忆率 ${retentionText(item)}`);
     }
     const rich = td.querySelector('[data-wrong]');
     if (rich && rich !== document.activeElement && rich !== wrongSelection?.editor) rich.innerHTML = wrongTextHTML(String(item.value ?? ''), state.wrongQuestionFormats[item.binding.id]);
@@ -207,7 +215,7 @@ function renderGrid() {
       const editable = cell?.binding && !loadError;
       const node = isMastery(cell?.binding);
       const wrong = cell?.binding?.type === 'wrong-question';
-      return `<td tabindex="-1" data-cell="${address}" class="${frozenCell ? 'frozen ' : ''}${!compactPanel && style.alignment.wrapText === '1' ? 'wrap ' : ''}${nodeNames.has(address) ? 'node-name ' : ''}${wrong ? 'wrong-question ' : ''}${showRetention && node ? 'show-retention ' : ''}${editable ? 'editable ' : ''}${selected === address ? 'selected' : ''}" ${merge ? `rowspan="${merge.rows}" colspan="${merge.cols}"` : ''} style="${css}" title="${escape(displayValue(activeSheet, address, cell))}">${editable ? wrong ? `<div class="wrong-editor" contenteditable="true" role="textbox" aria-multiline="false" data-edit="${address}" data-wrong="${cell.binding.id}" aria-label="${escape(cell.binding.label)}" spellcheck="false">${wrongTextHTML(String(cell.value ?? ''), state.wrongQuestionFormats[cell.binding.id])}</div><span class="fill-handle" aria-hidden="true" title="向右拖动，复制错题题号"></span>` : `<input type="text" inputmode="${isText(cell.binding) ? 'text' : 'decimal'}" data-edit="${address}" ${node ? `data-node="${cell.binding.id}"` : ''} ${showRetention && node ? `aria-description="每日记忆率 ${retentionText(cell)}"` : ''} ${wrong ? `data-wrong="${cell.binding.id}"` : ''} aria-label="${escape(cell.binding.label)}${node ? '掌握度' : ''}" value="${escape(displayValue(activeSheet, address, cell))}" spellcheck="false">${wrong ? '<span class="fill-handle" aria-hidden="true" title="向右拖动，复制错题题号"></span>' : ''}` : `<span class="cell-content">${escape(displayValue(activeSheet, address, cell))}</span>`}${showRetention && node ? retentionReadout(address, cell) : ''}</td>`;
+      return `<td tabindex="-1" data-cell="${address}" ${node ? `data-review="${reviewState(cell)}"` : ''} class="${frozenCell ? 'frozen ' : ''}${!compactPanel && style.alignment.wrapText === '1' ? 'wrap ' : ''}${nodeNames.has(address) ? 'node-name ' : ''}${wrong ? 'wrong-question ' : ''}${showRetention && node ? 'show-retention ' : ''}${editable ? 'editable ' : ''}${selected === address ? 'selected' : ''}" ${merge ? `rowspan="${merge.rows}" colspan="${merge.cols}"` : ''} style="${css}" title="${escape(displayValue(activeSheet, address, cell))}">${editable ? wrong ? `<div class="wrong-editor" contenteditable="true" role="textbox" aria-multiline="false" data-edit="${address}" data-wrong="${cell.binding.id}" aria-label="${escape(cell.binding.label)}" spellcheck="false">${wrongTextHTML(String(cell.value ?? ''), state.wrongQuestionFormats[cell.binding.id])}</div><span class="fill-handle" aria-hidden="true" title="向右拖动，复制错题题号"></span>` : `<input type="text" inputmode="${isText(cell.binding) ? 'text' : 'decimal'}" data-edit="${address}" ${node ? `data-node="${cell.binding.id}"` : ''} ${node ? `aria-description="${escape(reviewNote(cell))}${showRetention ? `，每日记忆率 ${retentionText(cell)}` : ''}"` : ''} ${wrong ? `data-wrong="${cell.binding.id}"` : ''} aria-label="${escape(cell.binding.label)}${node ? '掌握度' : ''}" value="${escape(displayValue(activeSheet, address, cell))}" spellcheck="false">${wrong ? '<span class="fill-handle" aria-hidden="true" title="向右拖动，复制错题题号"></span>' : ''}` : `<span class="cell-content">${escape(displayValue(activeSheet, address, cell))}</span>`}${showRetention && node ? retentionReadout(address, cell) : ''}</td>`;
     }).join('')}</tr>`;
   }).join('')}</tbody></table>`;
   const viewport = document.querySelector('#grid');

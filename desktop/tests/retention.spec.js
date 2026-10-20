@@ -31,7 +31,7 @@ for (const [sheet, prefix] of [['数学-分数面板', 'math'], ['408-分数面�
       expect(box.x).toBeGreaterThanOrEqual(td.x + 3);
       expect(box.x + box.width).toBeLessThanOrEqual(td.x + td.width - 3);
     }
-    await expect(readout(page, 'F7')).toHaveText('0.00（—）');
+    await expect(readout(page, 'F7')).toHaveText('-');
     await page.locator('[data-edit="F5"]').focus();
     await expect(page.locator('[data-edit="F5"]')).toHaveValue(String(memory.baseMastery * 100));
     await expect(readout(page, 'F5')).not.toBeVisible();

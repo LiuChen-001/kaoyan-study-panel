@@ -84,3 +84,7 @@ dialog button { border-color: #bfcbd7; margin-right: 10px; }
 .show-retention:focus-within .mastery-readout { display: none; }
 
 .show-retention > .cell-content { visibility: hidden; }
+
+.worksheet td[data-review="red"] { background: #ffd9df !important; }
+.worksheet td[data-review="orange"] { background: #ffe0b2 !important; }
+.worksheet td[data-review="unlearned"] { background: #eee !important; }
