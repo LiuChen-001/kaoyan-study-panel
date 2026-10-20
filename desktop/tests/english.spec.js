@@ -1,0 +1,96 @@
+import { test, expect } from '@playwright/test';
+const cell = (page, address) => page.locator(`[data-cell="${address}"]`);
+const input = (page, address) => page.locator(`[data-edit="${address}"]`);
+const saved = page => page.evaluate(() => JSON.parse(localStorage.getItem('kaoyan-panel-v1')));
+async function add(page, title) {
+  await page.locator('#add-article').click();
+  await page.locator('#article-dialog').getByLabel('文章名称', { exact: true }).fill(title);
+  await page.locator('#article-form button[type="submit"]').click();
+  await expect(page.locator('#article-dialog')).not.toBeVisible();
+  await expect(page.locator('#save-status')).toHaveText('已保存到本机');
+}
+
+test('English add action, layout, full-precision totals, editing survive restart', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-10-08T04:00:00Z') });
+  await page.goto('http://127.0.0.1:1420');
+  const names = await page.locator('#sheet-select option').allTextContents();
+  expect(names[names.indexOf('408-分数面板') + 1]).toBe('英语');
+  await expect(page.locator('#add-article')).toHaveCount(0);
+  await page.locator('#sheet-select').selectOption('英语');
+  await expect(cell(page, 'A2')).toHaveAttribute('colspan', '2');
+  await expect(cell(page, 'B1')).toHaveText('0.00');
+  await expect(cell(page, 'D1')).toHaveText('0');
+  await page.locator('#add-article').click();
+  await page.locator('#article-dialog').getByLabel('文章名称', { exact: true }).fill('   ');
+  await page.locator('#article-form button[type="submit"]').click();
+  await expect(page.locator('#article-error')).toHaveText('请输入文章名称');
+  await page.locator('#cancel-article').click();
+  expect((await saved(page)).english.articles).toEqual([]);
+  await add(page, 'how to study');
+  await cell(page, 'A1').click();
+  await expect(input(page, 'C3')).toHaveValue('0');
+  expect((await saved(page)).english.articles[0].memory).toBeNull();
+  await input(page, 'C3').fill('88.999999'); await input(page, 'C3').press('Tab');
+  await expect(input(page, 'C3')).toHaveValue('88');
+  await expect(cell(page, 'B1')).toHaveText('0.89');
+  await expect(cell(page, 'D1')).toHaveText('355');
+  await input(page, 'C3').focus();
+  expect(Number(await input(page, 'C3').inputValue())).toBeCloseTo(88.999999, 12);
+  await input(page, 'C3').press('Tab');
+  const memory = (await saved(page)).english.articles[0].memory;
+  await input(page, 'A3').fill('renamed "article" <script>'); await input(page, 'A3').press('Tab');
+  expect((await saved(page)).english.articles[0].memory).toEqual(memory);
+  await input(page, 'C3').fill('88'); await input(page, 'C3').press('Tab');
+  await expect(page.locator('#input-error')).toContainText('只能提高');
+  expect((await saved(page)).english.articles[0].memory).toEqual(memory);
+  await add(page, 'second article');
+  await input(page, 'C4').fill('12.34567'); await input(page, 'C4').press('Tab');
+  await expect(cell(page, 'B1')).toHaveText('1.01');
+  await expect(cell(page, 'D1')).toHaveText('405');
+  const current = await saved(page);
+  await page.reload(); await page.locator('#sheet-select').selectOption('英语');
+  await expect(input(page, 'A3')).toHaveValue('renamed "article" <script>');
+  expect(await saved(page)).toEqual(current);
+  await page.screenshot({ path: 'test-results/english-sheet.png' });
+  await page.setViewportSize({ width: 760, height: 560 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('English curves decay at Shanghai midnight, permit reviews and keep old subject state', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-10-08T15:50:00Z') });
+  await page.goto('http://127.0.0.1:1420');
+  await input(page, 'F5').fill('73.4567'); await input(page, 'F5').press('Tab');
+  const math = (await saved(page)).memory;
+  await page.locator('#sheet-select').selectOption('英语');
+  await add(page, 'daily reading');
+  await input(page, 'C3').fill('80'); await input(page, 'C3').press('Tab');
+  const first = await saved(page);
+  await input(page, 'C3').focus();
+  await page.clock.setSystemTime(new Date('2026-10-08T16:10:00Z'));
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await cell(page, 'A1').click();
+  await expect(input(page, 'C3')).toHaveValue('40');
+  await expect(cell(page, 'B1')).toHaveText('0.40');
+  await expect(cell(page, 'D1')).toHaveText('160');
+  expect(await saved(page)).toEqual(first);
+  await input(page, 'C3').focus();
+  await page.locator('#formula').fill('60'); await page.locator('#formula').press('Enter');
+  const reviewed = await saved(page);
+  expect(reviewed.english.articles[0].memory.recentPreInterventionMasteries).toEqual([.4, 0, 0, 0, 0]);
+  expect(reviewed.memory).toEqual(math);
+  await page.clock.setSystemTime(new Date('2026-10-09T16:10:00Z'));
+  await page.reload(); await page.locator('#sheet-select').selectOption('英语');
+  await expect(input(page, 'C3')).toHaveValue(String(Math.trunc(60 * reviewed.english.articles[0].memory.retentionPerDay)));
+  expect(await saved(page)).toEqual(reviewed);
+});
+
+test('v3 upgrades without changing old curves and keeps a permanent backup', async ({ page }) => {
+  await page.goto('http://127.0.0.1:1420');
+  await input(page, 'F5').fill('65.4321'); await input(page, 'F5').press('Tab');
+  const { english, ...old } = await saved(page); old.version = 3;
+  await page.evaluate(state => localStorage.setItem('kaoyan-panel-v1', JSON.stringify(state)), old);
+  await page.reload();
+  await expect(page.locator('#save-status')).toHaveText('已保存到本机');
+  expect(await saved(page)).toEqual({ ...old, version: 11, english: { articles: [] } });
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kaoyan-panel-before-spacing-v3')))).toEqual(old);
+});

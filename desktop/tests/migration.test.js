@@ -1,0 +1,55 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { initialState, migrateState } from '../src/model.js';
+import { predictMastery, review, updatedRetention } from '../src/memory.js';
+import { legacyInitial, legacyReview } from './legacy-fixtures.js';
+const data = JSON.parse(readFileSync(new URL('../src/data.json', import.meta.url)));
+const close = (a, b) => assert.ok(Math.abs(a - b) < 1e-13, `${a} != ${b}`);
+
+test('v2 migration recalculates latest review only, preserving old r, dates, and inputs', () => {
+  const old = { ...initialState(data), version: 2 };
+  old.memory['cs:F21'] = { ...legacyInitial(100, '2026-10-05'), lastInterventionDate: '2026-10-06', retentionPerDay: .6035533905932737, recentPreInterventionMasteries: [.5, 0, 0, 0, 0] };
+  const snapshot = structuredClone(old);
+  const next = migrateState(data, old);
+  const memory = next.memory['cs:F21'];
+  close(memory.retentionPerDay, updatedRetention(.5, 1, 1, .5));
+  assert.deepEqual(memory.recentPreInterventionMasteries, [.5, 0, 0, 0, 0]);
+  assert.deepEqual(memory.recentReviewDates, ['2026-10-06']);
+  assert.equal(memory.baseMastery, 1);
+  close(predictMastery(memory, '2026-10-07'), memory.retentionPerDay);
+  assert.equal(next.version, 11);
+  assert.deepEqual(old, snapshot);
+  assert.deepEqual(next.annual, old.annual); assert.deepEqual(next.weights, old.weights);
+  assert.deepEqual(migrateState(data, JSON.parse(JSON.stringify(next))), next);
+});
+
+test('v4 multi-review migration uses verified backup dates; no history is invented or rewritten', () => {
+  const initial = legacyInitial(100, '2026-10-05');
+  const prior = legacyReview(initial, 100, '2026-10-06');
+  const latest = legacyReview(prior, 100, '2026-10-08');
+  const old = { ...initialState(data), version: 4 };
+  old.memory['cs:F21'] = latest;
+  old.memory['math:F5'] = legacyReview(legacyInitial(70, '2026-10-08'), 90, '2026-10-08');
+  old.english.articles = [{ id: 'article', title: 'Reading', memory: structuredClone(latest) }];
+  const backup = structuredClone(old);
+  backup.memory['cs:F21'] = prior; backup.english.articles[0].memory = prior;
+  const snapshot = structuredClone(old);
+  assert.throws(() => migrateState(data, old), /缺少完整复习/);
+  const next = migrateState(data, old, [backup]);
+  const memory = next.memory['cs:F21'];
+  close(memory.retentionPerDay, updatedRetention(prior.retentionPerDay, 1, 2, predictMastery(prior, '2026-10-08')));
+  assert.deepEqual(memory.recentPreInterventionMasteries, latest.recentPreInterventionMasteries);
+  assert.deepEqual(memory.recentReviewDates, ['2026-10-08', '2026-10-06']);
+  assert.equal(memory.reviewOrigin.retentionPerDay, prior.retentionPerDay);
+  assert.deepEqual(next.english.articles[0].memory, memory);
+  assert.equal(next.memory['math:F5'].retentionPerDay, .5);
+  assert.deepEqual(next.memory['math:F5'].recentPreInterventionMasteries, old.memory['math:F5'].recentPreInterventionMasteries);
+  const future = review(memory, 100, '2026-10-09');
+  close(future.recentPreInterventionMasteries[0], memory.retentionPerDay);
+  assert.deepEqual(future.recentPreInterventionMasteries.slice(1), latest.recentPreInterventionMasteries.slice(0, 4));
+  assert.deepEqual(old, snapshot);
+  assert.deepEqual(migrateState(data, next), next);
+  const wrong = structuredClone(backup); wrong.memory['cs:F21'].retentionPerDay += .01;
+  assert.throws(() => migrateState(data, old, [wrong]), /缺少完整复习/);
+});

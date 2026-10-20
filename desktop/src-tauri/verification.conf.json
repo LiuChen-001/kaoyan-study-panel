@@ -1,0 +1,4 @@
+{
+  "identifier": "cn.kaoyan.study-panel.verification",
+  "app": { "windows": [{ "label": "main", "title": "面板隔离验证", "width": 1280, "height": 860, "visible": false }] }
+}

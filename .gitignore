@@ -1,0 +1,32 @@
+# Dependencies, build output and verification artifacts
+node_modules/
+dist/
+target/
+gen/
+test-results/
+playwright-report/
+.npm-cache/
+__pycache__/
+*.pyc
+
+# Workbook recovery files and inspection output
+tmp/
+outputs/
+~$*
+*.inspect.ndjson
+
+# Local credentials and personal learning records
+.env
+.env.*
+!.env.example
+progress.json
+progress.bak
+progress.tmp
+progress-before-*.json
+production-before.json
+*.log
+
+# OS metadata
+.DS_Store
+Thumbs.db
+Desktop.ini
