@@ -41,9 +41,9 @@ fn save_state(app: tauri::AppHandle, lock: tauri::State<'_, Mutex<()>>, content:
     if let Ok(previous) = fs::read_to_string(&path) {
         let old: serde_json::Value = serde_json::from_str(&previous).unwrap_or(serde_json::Value::Null);
         let next: serde_json::Value = serde_json::from_str(&content).map_err(|e| e.to_string())?;
-        let backup_name = old["version"].as_u64().filter(|v| (1..=10).contains(v))
-            .map(|v| format!("progress-before-spacing-v{}.json", v));
-        if let Some(name) = backup_name.filter(|_| next["version"] == 11) {
+        let backup_name = old["version"].as_u64().filter(|v| (1..=11).contains(v))
+            .map(|v| format!("progress-before-rich-text-v{}.json", v));
+        if let Some(name) = backup_name.filter(|_| next["version"] == 12) {
             let backup = path.with_file_name(name);
             match fs::OpenOptions::new().write(true).create_new(true).open(backup) {
                 Ok(mut file) => { file.write_all(previous.as_bytes()).and_then(|_| file.sync_all()).map_err(|e| e.to_string())?; }

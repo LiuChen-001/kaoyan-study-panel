@@ -18,7 +18,7 @@ test('v2 migration recalculates latest review only, preserving old r, dates, and
   assert.deepEqual(memory.recentReviewDates, ['2026-10-06']);
   assert.equal(memory.baseMastery, 1);
   close(predictMastery(memory, '2026-10-07'), memory.retentionPerDay);
-  assert.equal(next.version, 11);
+  assert.equal(next.version, 12);
   assert.deepEqual(old, snapshot);
   assert.deepEqual(next.annual, old.annual); assert.deepEqual(next.weights, old.weights);
   assert.deepEqual(migrateState(data, JSON.parse(JSON.stringify(next))), next);

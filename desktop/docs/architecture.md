@@ -1,6 +1,6 @@
 # 桌面应用架构
 
-适用版本：1.8.0。应用是 Windows 上离线运行的 Tauri 2 程序，前端使用原生 JavaScript ES Modules 与 Vite，没有 React/Vue、服务端或数据库。Rust 负责本地文件读写，业务计算在前端纯函数中完成。
+适用版本：1.9.0。应用是 Windows 上离线运行的 Tauri 2 程序，前端使用原生 JavaScript ES Modules 与 Vite，没有 React/Vue、服务端或数据库。Rust 负责本地文件读写，业务计算在前端纯函数中完成。
 
 ## 1. 系统边界与数据来源
 
@@ -52,7 +52,7 @@ flowchart LR
 
 ## 3. 运行生命周期
 
-1. 创建默认记录，再读取已有记录；`validateState → migrateState` 通过后才启用编辑。v1～v5 先用 load_migration_history 读取候选备份，v6～v10 直接使用 reviewOrigin；memory-migration.js 还原参数并重算最近一次 p；首次初始化或版本迁移会安排存盘，正常重开 version 11 不重置节点。
+1. 创建默认记录，再读取已有记录；`validateState → migrateState` 通过后才启用编辑。v1～v5 先用 load_migration_history 读取候选备份，v6～v10 直接使用 reviewOrigin；memory-migration.js 还原参数并重算最近一次 p；首次初始化或版本迁移会安排存盘，正常重开 version 12 不重置节点。
 2. 按工作簿顺序呈现当前表。节点 ID 基于原掌握度单元格，例如 math:F5；展开错题行只映射显示地址，绑定 ID 仍不变。workbook.js 同时映射行高、合并和本表公式引用，跨表引用保留原地址。
 3. 聚焦输入框显示原始数值并记录原文本；未修改就离开，不计为复习，也不把两位小数写回模型。
 4. 提交时先刷新当日预测，保留旧状态副本。掌握度进入 `review`（同日从持久化起点覆盖，异日推进 r 和日期窗口），错题题号写 wrongQuestions 普通文本，年度分数和权重修改各自字段；整体校验失败则恢复旧状态并提示。
@@ -94,3 +94,6 @@ flowchart LR
 
 
 1.8.0：在G的额外增益中乘d(τ)=0.2+0.8×exp(−max(0,τ−5)²)，保留90%/96%目标；初学100%、每天检查且低于50%复习至100%的前六次间隔为2、3、8、14、32、100天。记录v11，独立备份progress-before-spacing-v<旧版本>.json，仅从原reviewOrigin重算最新p，历史不改。详细公式、例子和远期局限以算法说明为准。
+
+
+1.9.0增加错题格局部文字Ctrl+B加粗和字体颜色，横向填充复制格式，格式随文字持久保存。记录v12新增wrongQuestionFormats；v11升级不重算曲线，独立备份progress-before-rich-text-v11.json。正式程序及桌面/开始固定入口随发布更新。

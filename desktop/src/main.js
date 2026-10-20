@@ -11,6 +11,7 @@ import { loadState, saveState, loadMigrationHistory } from './storage.js';
 import { isTauri } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { ENGLISH_SHEET, addArticle } from './english.js';
+import { wrongTextHTML, readWrongEditor, setWrongText } from './wrong-text.js';
 import './style.css';
 
 const app = document.querySelector('#app');
@@ -64,6 +65,68 @@ function persist() {
 }
 const rawValue = cell => cell?.value == null ? '' : cell.binding?.type === 'weight' ? String(cell.value * 100) : String(cell.value);
 
+let wrongSelection = null;
+function updateFormatControls() {
+  const enabled = !loadError && values[selected]?.binding?.type === 'wrong-question';
+  const bold = document.querySelector('#wrong-bold');
+  const color = document.querySelector('#wrong-color');
+  if (bold) { bold.disabled = !enabled; bold.setAttribute('aria-pressed', String(enabled && document.queryCommandState('bold'))); }
+  if (color) color.disabled = !enabled;
+}
+function rememberWrongSelection() {
+  const selection = window.getSelection();
+  const element = selection?.anchorNode?.nodeType === Node.ELEMENT_NODE ? selection.anchorNode : selection?.anchorNode?.parentElement;
+  const editor = element?.closest('[data-wrong]');
+  if (editor && selection.rangeCount && editor.contains(selection.focusNode)) {
+    wrongSelection = { editor, range: selection.getRangeAt(0).cloneRange() };
+    updateFormatControls();
+  }
+}
+function commitWrongEditor(editor) {
+  if (loadError || !editor.isConnected) return;
+  const { text, runs } = readWrongEditor(editor);
+  const id = editor.dataset.wrong;
+  const formatted = runs.some(run => run.bold || run.color) ? runs : undefined;
+  if (state.wrongQuestions[id] === text && JSON.stringify(state.wrongQuestionFormats[id]) === JSON.stringify(formatted)) return;
+  const before = structuredClone(state);
+  try {
+    setWrongText(state, id, text, runs);
+    validateState(data, state); refreshValues(); persist();
+    document.querySelector('#input-error').textContent = '';
+  } catch (error) { state = before; document.querySelector('#input-error').textContent = error.message; }
+}
+function formatWrongText(command, color) {
+  const remembered = wrongSelection;
+  if (!remembered?.editor.isConnected || remembered.editor.dataset.edit !== selected || loadError) return;
+  const { editor, range } = remembered;
+  editor.focus();
+  const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range);
+  // Native editing commands preserve range formatting, IME and the browser undo stack.
+  document.execCommand('styleWithCSS', false, true);
+  document.execCommand(command, false, color);
+  rememberWrongSelection(); commitWrongEditor(editor); updateFormatControls();
+}
+document.addEventListener('selectionchange', rememberWrongSelection);
+app.addEventListener('pointerdown', event => {
+  if (event.target.closest('#wrong-bold')) event.preventDefault();
+  if (event.target.closest('#wrong-color')) rememberWrongSelection();
+});
+app.addEventListener('click', event => {
+  if (event.target.closest('#wrong-bold')) formatWrongText('bold');
+});
+app.addEventListener('input', event => {
+  if (event.target.id === 'wrong-color') formatWrongText('foreColor', event.target.value);
+  if (event.target.dataset.wrong) document.querySelector('#formula').value = event.target.textContent;
+});
+app.addEventListener('paste', event => {
+  if (!event.target.closest('[data-wrong]')) return;
+  event.preventDefault();
+  document.execCommand('insertText', false, event.clipboardData.getData('text/plain').replace(/\r?\n/g, ' '));
+});
+app.addEventListener('drop', event => {
+  if (event.target.closest('[data-wrong]')) event.preventDefault();
+});
+
 function refreshValues(date = today()) {
   displayedDate = date;
   values = sheetValues(data, activeSheet, state, date, wrongIndexSheets.has(activeSheet));
@@ -78,7 +141,9 @@ function refreshValues(date = today()) {
       td.insertAdjacentHTML('beforeend', retentionReadout(address, item));
       input?.setAttribute('aria-description', `每日记忆率 ${retentionText(item)}`);
     }
-    if (!input) td.querySelector('.cell-content').textContent = displayValue(activeSheet, address, item);
+    const rich = td.querySelector('[data-wrong]');
+    if (rich && rich !== document.activeElement && rich !== wrongSelection?.editor) rich.innerHTML = wrongTextHTML(String(item.value ?? ''), state.wrongQuestionFormats[item.binding.id]);
+    if (!input && !rich) td.querySelector('.cell-content').textContent = displayValue(activeSheet, address, item);
     td.title = displayValue(activeSheet, address, item);
   }
   const bar = document.querySelector('#formula');
@@ -100,7 +165,8 @@ function selectCell(address, focus = false) {
   bar.value = item?.formula ? '=' + item.formula : rawValue(item);
   const memory = memoryFor(item?.binding);
   document.querySelector('#cell-hint').textContent = item?.binding ? isMastery(item.binding) ? memory ? `仅可提高掌握度 · 上次学习 ${memory.lastInterventionDate} · 每日保留 ${(memory.retentionPerDay * 100).toFixed(2)}%` : '尚未初学 · 首次输入大于 0 的掌握度后开始遗忘' : item.binding.type === 'wrong-question' ? '错题题号：可填写资料名、页码和题号 · 拖动右下角向右填充同一行' : item.binding.type === 'article-title' ? '文章名称：修改名称不会重置学习记录' : item.binding.type === 'weight' ? '权重：按百分数输入，例如 9 表示 9%' : '年度小节得分：修改后自动计算' : item?.formula ? '公式单元格 · 自动计算' : activeSheet === ENGLISH_SHEET && state.english.articles.length === 0 ? '点击“增加文章”填写名称，初始掌握度为 0' : '只读单元格 · 完整内容见编辑栏';
-  if (focus) { (cell.querySelector('input') ?? cell).focus(); cell.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
+  updateFormatControls();
+  if (focus) { (cell.querySelector('input, [contenteditable]') ?? cell).focus(); cell.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
 }
 
 function renderGrid() {
@@ -141,7 +207,7 @@ function renderGrid() {
       const editable = cell?.binding && !loadError;
       const node = isMastery(cell?.binding);
       const wrong = cell?.binding?.type === 'wrong-question';
-      return `<td tabindex="-1" data-cell="${address}" class="${frozenCell ? 'frozen ' : ''}${!compactPanel && style.alignment.wrapText === '1' ? 'wrap ' : ''}${nodeNames.has(address) ? 'node-name ' : ''}${wrong ? 'wrong-question ' : ''}${showRetention && node ? 'show-retention ' : ''}${editable ? 'editable ' : ''}${selected === address ? 'selected' : ''}" ${merge ? `rowspan="${merge.rows}" colspan="${merge.cols}"` : ''} style="${css}" title="${escape(displayValue(activeSheet, address, cell))}">${editable ? `<input type="text" inputmode="${isText(cell.binding) ? 'text' : 'decimal'}" data-edit="${address}" ${node ? `data-node="${cell.binding.id}"` : ''} ${showRetention && node ? `aria-description="每日记忆率 ${retentionText(cell)}"` : ''} ${wrong ? `data-wrong="${cell.binding.id}"` : ''} aria-label="${escape(cell.binding.label)}${node ? '掌握度' : ''}" value="${escape(displayValue(activeSheet, address, cell))}" spellcheck="false">${wrong ? '<span class="fill-handle" aria-hidden="true" title="向右拖动，复制错题题号"></span>' : ''}` : `<span class="cell-content">${escape(displayValue(activeSheet, address, cell))}</span>`}${showRetention && node ? retentionReadout(address, cell) : ''}</td>`;
+      return `<td tabindex="-1" data-cell="${address}" class="${frozenCell ? 'frozen ' : ''}${!compactPanel && style.alignment.wrapText === '1' ? 'wrap ' : ''}${nodeNames.has(address) ? 'node-name ' : ''}${wrong ? 'wrong-question ' : ''}${showRetention && node ? 'show-retention ' : ''}${editable ? 'editable ' : ''}${selected === address ? 'selected' : ''}" ${merge ? `rowspan="${merge.rows}" colspan="${merge.cols}"` : ''} style="${css}" title="${escape(displayValue(activeSheet, address, cell))}">${editable ? wrong ? `<div class="wrong-editor" contenteditable="true" role="textbox" aria-multiline="false" data-edit="${address}" data-wrong="${cell.binding.id}" aria-label="${escape(cell.binding.label)}" spellcheck="false">${wrongTextHTML(String(cell.value ?? ''), state.wrongQuestionFormats[cell.binding.id])}</div><span class="fill-handle" aria-hidden="true" title="向右拖动，复制错题题号"></span>` : `<input type="text" inputmode="${isText(cell.binding) ? 'text' : 'decimal'}" data-edit="${address}" ${node ? `data-node="${cell.binding.id}"` : ''} ${showRetention && node ? `aria-description="每日记忆率 ${retentionText(cell)}"` : ''} ${wrong ? `data-wrong="${cell.binding.id}"` : ''} aria-label="${escape(cell.binding.label)}${node ? '掌握度' : ''}" value="${escape(displayValue(activeSheet, address, cell))}" spellcheck="false">${wrong ? '<span class="fill-handle" aria-hidden="true" title="向右拖动，复制错题题号"></span>' : ''}` : `<span class="cell-content">${escape(displayValue(activeSheet, address, cell))}</span>`}${showRetention && node ? retentionReadout(address, cell) : ''}</td>`;
     }).join('')}</tr>`;
   }).join('')}</tbody></table>`;
   const viewport = document.querySelector('#grid');
@@ -155,7 +221,7 @@ function renderGrid() {
 
 function render() {
   app.innerHTML = `<header class="titlebar"><span class="app-icon" aria-hidden="true">▦</span><h1>考研综合面板</h1><span class="filename">考研综合面板.xlsx · 桌面版</span><span id="save-status" role="status"></span></header>
-    <div class="toolbar"><label>工作表 <select id="sheet-select" aria-label="选择工作表">${sheets.map(name => `<option ${name === activeSheet ? 'selected' : ''}>${escape(name)}</option>`).join('')}</select></label><span class="separator"></span>${activeSheet.endsWith('分数面板') ? `<button id="wrong-index" aria-pressed="${wrongIndexSheets.has(activeSheet)}" aria-expanded="${wrongIndexSheets.has(activeSheet)}" aria-controls="grid">错题索引</button>` : ''}${activeSheet === ENGLISH_SHEET ? `<button id="add-article" ${loadError ? 'disabled' : ''}>增加文章</button>` : ''}${activeSheet.endsWith('分数面板') || activeSheet === ENGLISH_SHEET ? `<button id="show-retention" aria-pressed="${showRetention}" aria-controls="grid">显示记忆率</button>` : ''}<span class="precision">${activeSheet === ENGLISH_SHEET ? '完整精度计算 · 掌握度和词数截去小数' : '完整精度计算 · 显示两位小数'}</span></div>
+    <div class="toolbar"><label>工作表 <select id="sheet-select" aria-label="选择工作表">${sheets.map(name => `<option ${name === activeSheet ? 'selected' : ''}>${escape(name)}</option>`).join('')}</select></label><span class="separator"></span>${activeSheet.endsWith('分数面板') ? `<button id="wrong-index" aria-pressed="${wrongIndexSheets.has(activeSheet)}" aria-expanded="${wrongIndexSheets.has(activeSheet)}" aria-controls="grid">错题索引</button>` : ''}${activeSheet.endsWith('分数面板') ? `<span class="wrong-format-controls" role="group" aria-label="错题文字格式"><button id="wrong-bold" aria-label="加粗选中的错题文字（Ctrl+B）" title="加粗（Ctrl+B）" aria-pressed="false" disabled><b>B</b></button><label class="color-control" title="修改选中的错题文字颜色">字体颜色<input id="wrong-color" type="color" value="#c00000" aria-label="错题文字颜色" disabled></label></span>` : ''}${activeSheet === ENGLISH_SHEET ? `<button id="add-article" ${loadError ? 'disabled' : ''}>增加文章</button>` : ''}${activeSheet.endsWith('分数面板') || activeSheet === ENGLISH_SHEET ? `<button id="show-retention" aria-pressed="${showRetention}" aria-controls="grid">显示记忆率</button>` : ''}<span class="precision">${activeSheet === ENGLISH_SHEET ? '完整精度计算 · 掌握度和词数截去小数' : '完整精度计算 · 显示两位小数'}</span></div>
     ${loadError ? `<div class="error-banner" role="alert">无法读取记录：${escape(loadError)}。编辑已停用，请关闭程序后检查本地 progress.json 或恢复有效文件备份。</div>` : ''}
     <div class="formula-bar"><input id="address" aria-label="单元格地址" value="${selected}"><span class="fx">fx</span><input id="formula" aria-label="单元格内容或公式" readonly></div>
     <div id="input-error" role="alert"></div><main id="grid" aria-label="工作表网格"></main>
@@ -184,7 +250,8 @@ function commit(address, raw, original) {
     // An unchanged editor must not round-trip percentage conversion or display rounding.
     if (raw === rawValue(cell)) { document.querySelector('#input-error').textContent = ''; return; }
     if (binding.type === 'wrong-question') {
-      state.wrongQuestions[binding.id] = raw;
+      wrongSelection = null;
+      setWrongText(state, binding.id, raw);
       validateState(data, state); refreshValues();
       document.querySelector('#input-error').textContent = ''; persist(); return;
     }
@@ -219,8 +286,8 @@ function clearFillPreview() {
 function cellAtPoint(x, y) {
   let target = document.elementFromPoint(x, y);
   // Ignore the spilled part of a text editor when selecting or filling cells.
-  if (target?.matches('input[data-wrong]') && x >= target.closest('td').getBoundingClientRect().right) {
-    const editor = target;
+  if (target?.closest('[data-wrong]') && x >= target.closest('td').getBoundingClientRect().right) {
+    const editor = target.closest('[data-wrong]');
     editor.style.pointerEvents = 'none';
     target = document.elementFromPoint(x, y);
     editor.style.pointerEvents = '';
@@ -260,7 +327,7 @@ app.addEventListener('pointerdown', event => {
   event.preventDefault(); document.activeElement?.blur();
   const source = handle.closest('[data-cell]').dataset.cell;
   selectCell(source);
-  fillDrag = { source, value: values[source].value, targets: [], x: event.clientX, y: event.clientY };
+  fillDrag = { source, value: values[source].value, runs: structuredClone(state.wrongQuestionFormats[values[source].binding.id]), targets: [], x: event.clientX, y: event.clientY };
   handle.setPointerCapture(event.pointerId);
   fillFrame = requestAnimationFrame(scrollFill);
 });
@@ -271,9 +338,9 @@ app.addEventListener('pointermove', event => {
 app.addEventListener('pointerup', event => {
   if (!fillDrag) return;
   fillDrag.x = event.clientX; fillDrag.y = event.clientY; updateFillPreview();
-  const { targets, value } = fillDrag;
-  const changed = targets.some(address => state.wrongQuestions[values[address].binding.id] !== value);
-  for (const address of targets) state.wrongQuestions[values[address].binding.id] = value;
+  const { targets, value, runs } = fillDrag;
+  const changed = targets.some(address => state.wrongQuestions[values[address].binding.id] !== value || JSON.stringify(state.wrongQuestionFormats[values[address].binding.id]) !== JSON.stringify(runs));
+  for (const address of targets) setWrongText(state, values[address].binding.id, value, runs);
   cancelFill();
   if (changed) {
     refreshValues(); document.querySelector('#input-error').textContent = ''; persist();
@@ -283,10 +350,10 @@ app.addEventListener('pointercancel', cancelFill);
 app.addEventListener('lostpointercapture', cancelFill);
 app.addEventListener('click', event => {
   let td = event.target.closest('[data-cell]');
-  if (event.target.matches('input[data-wrong]') && event.clientX >= td.getBoundingClientRect().right) {
+  if (event.target.closest('[data-wrong]') && window.getSelection()?.isCollapsed && event.clientX >= td.getBoundingClientRect().right) {
     td = cellAtPoint(event.clientX, event.clientY);
     if (td) selectCell(td.dataset.cell, true);
-  } else if (td) { selectCell(td.dataset.cell); if (!td.querySelector('input')) td.focus(); }
+  } else if (td) { selectCell(td.dataset.cell); if (!td.querySelector('input, [contenteditable]')) td.focus(); }
   const button = event.target.closest('button');
   if (button?.id === 'wrong-index') {
     document.activeElement?.blur();
@@ -324,16 +391,18 @@ app.addEventListener('submit', event => {
 });
 app.addEventListener('focusin', event => {
   const address = event.target.dataset.edit;
+  if (event.target.dataset.wrong) { selectCell(address); return; }
   if (address) { refreshValues(); selectCell(address); event.target.value = rawValue(values[address]); event.target.select(); }
   if (address || event.target.id === 'formula') editingOriginals.set(event.target, event.target.value);
 });
 app.addEventListener('focusout', event => {
   const address = event.target.dataset.edit;
+  if (event.target.dataset.wrong) { commitWrongEditor(event.target); return; }
   if (address) { event.target.value = displayValue(activeSheet, address, values[address]); fitRetentionReadouts(); }
 });
 app.addEventListener('change', event => {
   const input = event.target;
-  if (input.dataset.edit) commit(input.dataset.edit, input.value, editingOriginals.get(input));
+  if (input.dataset.edit && !input.dataset.wrong) commit(input.dataset.edit, input.value, editingOriginals.get(input));
   if (input.id === 'formula') commit(selected, input.value, editingOriginals.get(input));
   if (input.id === 'sheet-select') switchSheet(input.value);
   if (input.id === 'address') {
@@ -347,6 +416,13 @@ app.addEventListener('keydown', event => {
   if (event.key === 'Escape' && fillDrag) { cancelFill(); return; }
   if (event.key === 'Escape' && event.target.matches('td.node-name')) {
     event.target.classList.remove('selected'); event.target.blur(); return;
+  }
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'b' && event.target.dataset.wrong) {
+    event.preventDefault(); rememberWrongSelection(); formatWrongText('bold'); return;
+  }
+  if (event.key === 'Escape' && event.target.dataset.wrong) {
+    commitWrongEditor(event.target);
+    event.target.closest('td').classList.remove('selected'); event.target.blur(); return;
   }
   if (event.key === 'Escape' && event.target.dataset.edit) {
     event.target.value = rawValue(values[event.target.dataset.edit]);

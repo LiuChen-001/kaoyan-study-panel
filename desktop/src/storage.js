@@ -16,8 +16,8 @@ export async function saveState(state) {
     const old = localStorage.getItem(KEY);
     let oldVersion;
     try { oldVersion = JSON.parse(old)?.version; } catch { /* Explicit backup recovery may replace an unreadable record. */ }
-    const backupKey = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].includes(oldVersion) ? `kaoyan-panel-before-spacing-v${oldVersion}` : null;
-    if (backupKey && state.version === 11 && !localStorage.getItem(backupKey)) localStorage.setItem(backupKey, old);
+    const backupKey = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].includes(oldVersion) ? `kaoyan-panel-before-rich-text-v${oldVersion}` : null;
+    if (backupKey && state.version === 12 && !localStorage.getItem(backupKey)) localStorage.setItem(backupKey, old);
     localStorage.setItem(KEY, content);
   }
 }

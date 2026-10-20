@@ -49,7 +49,7 @@ test('v1 migration resets only legacy mastery once, backs it up, and never inven
   await expect(page.locator('#save-status')).toHaveText('已保存到本机');
   expect(Object.values((await state(page)).memory).every(value => value === null)).toBe(true);
   expect((await state(page)).annual['math:4']['2025']).toBe(9.87654321);
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kaoyan-panel-before-spacing-v1')))).toEqual(legacy);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kaoyan-panel-before-rich-text-v1')))).toEqual(legacy);
   await input(page).fill('80'); await input(page).press('Tab');
   const learned = await state(page);
   await page.reload(); expect(await state(page)).toEqual(learned);
@@ -68,10 +68,10 @@ test('v2 upgrade recalculates the current curve once and preserves a recoverable
   await expect(page.locator('#save-status')).toHaveText('已保存到本机');
   await expect(input(page)).toHaveValue('70.20');
   const migrated = await state(page);
-  expect(migrated.version).toBe(11);
+  expect(migrated.version).toBe(12);
   expect(migrated.memory['math:F5'].retentionPerDay).toBeCloseTo(0.7020287504089231, 14);
   expect(migrated.memory['math:F5'].lastInterventionDate).toBe('2026-10-06');
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kaoyan-panel-before-spacing-v2')))).toEqual(previous);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kaoyan-panel-before-rich-text-v2')))).toEqual(previous);
   await page.reload(); expect(await state(page)).toEqual(migrated);
   await page.clock.setSystemTime(new Date('2026-10-08T04:00:00Z'));
   await page.reload();

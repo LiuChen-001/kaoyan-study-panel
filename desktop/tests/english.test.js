@@ -37,7 +37,7 @@ test('v3 migration adds only empty English state and is idempotent', () => {
   old.annual['math:4']['2025'] = 9.87654321;
   const snapshot = structuredClone(old);
   const next = migrateState(data, old);
-  assert.equal(next.version, 11);
+  assert.equal(next.version, 12);
   assert.deepEqual(next.english, { articles: [] });
   assert.deepEqual(next.memory, old.memory);
   assert.deepEqual(next.annual, old.annual);

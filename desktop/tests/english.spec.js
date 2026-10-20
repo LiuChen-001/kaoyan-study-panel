@@ -91,6 +91,6 @@ test('v3 upgrades without changing old curves and keeps a permanent backup', asy
   await page.evaluate(state => localStorage.setItem('kaoyan-panel-v1', JSON.stringify(state)), old);
   await page.reload();
   await expect(page.locator('#save-status')).toHaveText('已保存到本机');
-  expect(await saved(page)).toEqual({ ...old, version: 11, english: { articles: [] } });
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kaoyan-panel-before-spacing-v3')))).toEqual(old);
+  expect(await saved(page)).toEqual({ ...old, version: 12, english: { articles: [] } });
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kaoyan-panel-before-rich-text-v3')))).toEqual(old);
 });

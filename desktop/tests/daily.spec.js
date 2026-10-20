@@ -47,8 +47,8 @@ test('v4 migration backs up existing records and preserves daily origin across r
   await page.evaluate(value => localStorage.setItem('kaoyan-panel-v1', JSON.stringify(value)), legacy);
   await page.reload();
   await expect(page.locator('#save-status')).toHaveText('已保存到本机');
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kaoyan-panel-before-spacing-v4')))).toEqual(legacy);
-  expect((await state(page)).version).toBe(11);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kaoyan-panel-before-rich-text-v4')))).toEqual(legacy);
+  expect((await state(page)).version).toBe(12);
   await page.locator('[data-edit="F5"]').fill('90');
   await page.locator('[data-edit="F5"]').press('Tab');
   await expect(page.locator('#save-status')).toHaveText('已保存到本机');

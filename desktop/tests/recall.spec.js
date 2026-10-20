@@ -23,14 +23,14 @@ test('v9 upgrade corrects a 100-day review immediately, preserving history and b
   await page.reload();
   await expect(page.locator('#save-status')).toHaveText('已保存到本机');
   const next = await state(page);
-  expect(next.version).toBe(11);
+  expect(next.version).toBe(12);
   expect(next.memory['math:F5'].retentionPerDay).toBeCloseTo(.5, 13);
   expect(next.memory['math:F5'].recentPreInterventionMasteries).toEqual(old.recentPreInterventionMasteries);
   expect(next.memory['math:F5'].reviewOrigin).toEqual(old.reviewOrigin);
   expect(next.wrongQuestions).toEqual(legacy.wrongQuestions);
   expect(next.annual).toEqual(legacy.annual); expect(next.weights).toEqual(legacy.weights);
   expect(next.english.articles[0].memory).toEqual(next.memory['math:F5']);
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kaoyan-panel-before-spacing-v9')))).toEqual(legacy);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kaoyan-panel-before-rich-text-v9')))).toEqual(legacy);
   await page.locator('#show-retention').click();
   await expect(page.locator('[data-cell="F5"] .mastery-readout')).toHaveText('95.00（50.00%）');
   await page.clock.setSystemTime(new Date('2026-10-21T04:00:00Z'));
@@ -89,7 +89,7 @@ test('v10 spacing upgrade corrects the last long-gap review and preserves histor
   expect(saved.memory['math:F5'].retentionPerDay).toBeCloseTo(expected.memory['math:F5'].retentionPerDay, 13);
   expected.memory['math:F5'].retentionPerDay = saved.memory['math:F5'].retentionPerDay;
   expect(saved).toEqual(expected);
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kaoyan-panel-before-spacing-v10')))).toEqual(legacy);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kaoyan-panel-before-rich-text-v10')))).toEqual(legacy);
   await page.reload(); expect(await state(page)).toEqual(expected);
   await edit(page, 100);
   // Unchanged 100 must not invent another review; the original day's snapshot survives.

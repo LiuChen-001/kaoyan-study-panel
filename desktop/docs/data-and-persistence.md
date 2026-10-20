@@ -1,14 +1,14 @@
 # 数据结构、持久化与迁移
 
-适用应用 1.8.0 / 学习记录 version 11。算法数学定义见[遗忘曲线算法说明](../../遗忘曲线算法说明.md)，应用计算链见[构建说明](../../面板构建doc.md)第 13 节。
+适用应用 1.9.0 / 学习记录 version 12。算法数学定义见[遗忘曲线算法说明](../../遗忘曲线算法说明.md)，应用计算链见[构建说明](../../面板构建doc.md)第 13 节。
 
 ## 1. 三种不同的数据版本
 
 | 标识 | 当前值 | 用途 |
 | --- | --- | --- |
-| exe / 包版本 | `1.8.0` | 发布标识；package、Cargo、Tauri 配置一致 |
+| exe / 包版本 | `1.9.0` | 发布标识；package、Cargo、Tauri 配置一致 |
 | `data.json.schemaVersion` | `1` | 内置工作簿内容结构 |
-| `progress.json.version` | `11` | v2 最小值；v3 平均值；v4 英语；v5 未发布的同日覆盖；v6 前后平均r及日期窗口；v7纯预测r、均值排除零；v8节点错题文本；v9累积复习；v10按复习前掌握度回拉；v11折减长间隔增益 |
+| `progress.json.version` | `12` | v2 最小值；v3 平均值；v4 英语；v5 未发布的同日覆盖；v6 前后平均r及日期窗口；v7纯预测r、均值排除零；v8节点错题文本；v9累积复习；v10按复习前掌握度回拉；v11折减长间隔增益；v12错题文字格式 |
 
 `data.json.sha256` 是源工作簿二进制的 SHA-256，供导入导出校验，非个人学习记录摘要。仅改 Excel 格式也可能改变该指纹。
 
@@ -40,11 +40,12 @@ type MemoryState = {
   recentReviewDates: string[]; // 最近至多 5 个有效复习日，倒序且不同日
   reviewOrigin: Omit<MemoryState, "reviewOrigin"> | null; // 当天首次复习前快照，不嵌套
 };
-type ProgressV11 = {
-  version: 11;
+type ProgressV12 = {
+  version: 12;
   english: { articles: Array<{ id: string; title: string; memory: MemoryState | null }> };
   memory: Record<string, MemoryState | null>;
   wrongQuestions: Record<string, string>; // 492 个原节点 ID，初始空文本，保留资料名/页码/前导零
+  wrongQuestionFormats: Record<string, Array<{text: string; bold?: boolean; color?: string}>>; // 稀疏格式，文本拼接必须等于wrongQuestions[id]；颜色为#RRGGBB
   annual: Record<string, Record<string, number | null>>;
   weights: Record<string, Record<string, number>>;
 };
@@ -78,7 +79,7 @@ type ProgressV11 = {
 
 | 旧状态 | 原生备份 | 浏览器键 |
 | --- | --- | --- |
-| v1～v10 升级到 v11 | `progress-before-spacing-v<旧版本>.json` | `kaoyan-panel-before-spacing-v<旧版本>` |
+| v1～v11 升级到 v12 | `progress-before-rich-text-v<旧版本>.json` | `kaoyan-panel-before-rich-text-v<旧版本>` |
 
 历史升级留下的 progress-before-forgetting-v1.json、progress-before-mean-v2.json、progress-before-english-v3.json 继续保留，可用作还原参数的候选来源。
 
@@ -88,11 +89,11 @@ type ProgressV11 = {
 
 ## 5. 迁移合同
 
-入口是 `model.js:migrateState(data, state, backups)` 和 `memory-migration.js`。先整体校验，成功后写 version 11。任何节点无法准确重算则整体失败，不部分覆盖正式文件。
+入口是 `model.js:migrateState(data, state, backups)` 和 `memory-migration.js`。先整体校验，成功后写 version 12。任何节点无法准确重算则整体失败，不部分覆盖正式文件。
 
 | 来源 | 行为 |
 | --- | --- |
-| 无记录 | 全节点 null，内置年度输入和权重，空英语列表，保存 v11 |
+| 无记录 | 全节点 null，内置年度输入和权重，空英语列表，保存 v12 |
 | v1 无日期 | 按用户此前决定节点未初学，保留年度输入与权重 |
 | v2 最小值 | 先由 migrateMinimumMemory 验证可恢复的单次复习并转换旧平均值口径，再执行累积算法迁移；复杂缺历史则报错 |
 | v3/v4/v5 平均值 | 保留旧 r、输入、日期，补齐可验证的日期窗口和起点，仅重算最近一次 p；v3 增加空英语列表 |
@@ -100,7 +101,8 @@ type ProgressV11 = {
 | v8 | 同样重算最近一次 p，并保留全部已有错题题号 |
 | v9 | 用原reviewOrigin预测r，保留全部旧历史，仅重算最近一次p |
 | v10 | 按原reviewOrigin重算最近一次p，保留全部历史 |
-| v11 | 原样读取，只按今天预测，不重复迁移 |
+| v11 | 仅新增空wrongQuestionFormats，所有曲线、旧题号和历史精确保留 |
+| v12 | 原样读取，只按今天预测，不重复迁移 |
 | 不支持版本或非法数据 | 报错停用编辑，原文件不覆盖 |
 
 还原最近一次复习前状态时，候选必须同初学日且日期更早，满足旧预测值、r 窗口移位、旧 0.2 公式计算的 p，数值校验容差为 1e-14。单次复习可由 pre/0.5^日期差逆推初学掌握度并校验；多次复习需要已保存的前一份快照，逐层验证日期。不会从当前 p 猜测任意复习日期。程序读取本机旧备份作为候选，导入旧备份也执行同样的验证。
@@ -129,7 +131,9 @@ v6 数组首项可能是旧平均样本，不能当作复习前预测。新记�
 不得把新版记录直接交给旧 exe 使用，或把新文件的 `version` 手工降级。若确需回退，保留新版完整副本，使用匹配旧程序的旧版备份；升级后新增的学习记录不能靠回退自动合并。
 
 
-历史1.7.0算法（已由1.8.0修正）：按复习前预测r的平方根将有效强度向初学回拉，C=28.711284228111044、B=20.164273571058075。长期未复习后新p接近0.5，仍保留90%/96%校准目标。旧r、日期、输入和文本不改，只按原reviewOrigin修正最近一次p并立即刷新预测。记录v10，升级备份progress-before-spacing-v<旧版本>.json，重开不重复迁移。公式及边界以[算法说明](../../遗忘曲线算法说明.md)为准。
+历史1.7.0算法（已由1.8.0修正）：按复习前预测r的平方根将有效强度向初学回拉，C=28.711284228111044、B=20.164273571058075。长期未复习后新p接近0.5，仍保留90%/96%校准目标。旧r、日期、输入和文本不改，只按原reviewOrigin修正最近一次p并立即刷新预测。记录v10，升级备份progress-before-recall-v<旧版本>.json，重开不重复迁移。公式及边界以[算法说明](../../遗忘曲线算法说明.md)为准。
 
 
 1.8.0：在G的额外增益中乘d(τ)=0.2+0.8×exp(−max(0,τ−5)²)，保留90%/96%目标；初学100%、每天检查且低于50%复习至100%的前六次间隔为2、3、8、14、32、100天。记录v11，独立备份progress-before-spacing-v<旧版本>.json，仅从原reviewOrigin重算最新p，历史不改。详细公式、例子和远期局限以算法说明为准。
+
+当前v11→v12不执行上述旧算法重算，仅新增空wrongQuestionFormats，所有memory及英语曲线精确保留。更早版本先完成既定算法迁移，再得到v12。

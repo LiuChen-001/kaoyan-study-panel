@@ -6,9 +6,9 @@ import { resolve, join } from 'node:path';
 import assert from 'node:assert/strict';
 import { initialState, migrateState } from '../src/model.js';
 import { today, initializeMemory, review } from '../src/memory.js';
-import { recallReview } from '../tests/legacy-fixtures.js';
+
 const appDir = join(process.env.APPDATA, 'cn.kaoyan.study-panel.verification');
-const files = ['progress.json', 'progress.bak', 'progress-before-spacing-v10.json'];
+const files = ['progress.json', 'progress.bak', 'progress-before-rich-text-v11.json'];
 const originals = await Promise.all(files.map(async name => {
   try { return await readFile(join(appDir, name)); }
   catch (error) { if (error.code === 'ENOENT') return null; throw error; }
@@ -37,15 +37,15 @@ try {
   const date = today();
   const yesterday = new Date(Date.parse(date + 'T00:00:00Z') - 86400000).toISOString().slice(0, 10);
   const beforeYesterday = new Date(Date.parse(date + 'T00:00:00Z') - 2 * 86400000).toISOString().slice(0, 10);
-  const legacy = { ...initialState(data), version: 10 };
+  const legacy = { ...initialState(data), version: 11 };
   legacy.wrongQuestions['cs:F21'] = '迁移前 P005：002';
-  legacy.memory['math:F5'] = recallReview(initializeMemory(80, yesterday), 60, date);
-  const prior = recallReview(initializeMemory(100, beforeYesterday), 100, yesterday);
-  legacy.memory['cs:F21'] = recallReview(prior, 100, date);
+  legacy.memory['math:F5'] = review(initializeMemory(80, yesterday), 60, date);
+  const prior = review(initializeMemory(100, beforeYesterday), 100, yesterday);
+  legacy.memory['cs:F21'] = review(prior, 100, date);
   const migrated = migrateState(data, legacy);
   await mkdir(appDir, { recursive: true });
   await writeFile(join(appDir, 'progress.json'), JSON.stringify(legacy));
-  await rm(join(appDir, 'progress-before-spacing-v10.json'), { force: true });
+  await rm(join(appDir, 'progress-before-rich-text-v11.json'), { force: true });
   let page = await launch();
   const identifier = await page.evaluate(() => window.__TAURI_INTERNALS__.invoke('plugin:app|identifier'));
   assert.equal(identifier, 'cn.kaoyan.study-panel.verification', 'Build with verification.conf.json first; never test against production records.');
@@ -54,7 +54,7 @@ try {
   const input = page.locator('[data-node]').first();
   assert.equal(await input.inputValue(), '60.00');
   await page.waitForFunction(() => document.querySelector('#save-status')?.textContent === '已保存到本机', null, { polling: 100 });
-  assert.deepEqual(JSON.parse(await readFile(join(appDir, 'progress-before-spacing-v10.json'), 'utf8')), legacy);
+  assert.deepEqual(JSON.parse(await readFile(join(appDir, 'progress-before-rich-text-v11.json'), 'utf8')), legacy);
   const actualMigration = JSON.parse(await readFile(join(appDir, 'progress.json'), 'utf8'));
   // WebView and Node may differ by one ulp in logarithms; all other fields stay exact.
   for (const [id, memory] of Object.entries(migrated.memory)) {
@@ -80,11 +80,20 @@ try {
   const saved = JSON.parse(await readFile(join(appDir, 'progress.json'), 'utf8'));
   assert.equal(saved.memory['math:F5'].baseMastery, 0.7325);
   assert.equal(await page.locator('[data-cell="F5"] .mastery-value').textContent(), '73.25');
-  assert.equal(saved.version, 11);
+  assert.equal(saved.version, 12);
   assert.deepEqual(saved.memory['math:F5'], review(initializeMemory(80, yesterday), 73.25, date));
   await page.locator('#wrong-index').click();
   const reference = '高数资料 P028：003、7、12';
   await page.locator('[data-edit="F5"]').fill(reference);
+  await page.locator('[data-edit="F5"]').evaluate(el => {
+    const node = el.firstChild;
+    const start = node.textContent.indexOf('003');
+    const range = document.createRange(); range.setStart(node, start); range.setEnd(node, start + 3);
+    const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range);
+    document.dispatchEvent(new Event('selectionchange'));
+  });
+  await page.keyboard.press('Control+b');
+  await page.locator('#wrong-color').evaluate(el => { el.focus(); el.value = '#c00000'; el.dispatchEvent(new Event('input', {bubbles:true})); });
   await page.locator('[data-edit="F5"]').press('Tab');
   await page.locator('[data-edit="F5"]').click();
   assert.ok(await page.locator('[data-edit="F5"]').evaluate(el => el.clientWidth >= el.scrollWidth));
@@ -96,6 +105,9 @@ try {
   await page.waitForFunction(() => document.querySelector('#save-status')?.textContent === '已保存到本机');
   const filled = JSON.parse(await readFile(join(appDir, 'progress.json'), 'utf8'));
   for (const id of ['math:F5', 'math:G5', 'math:H5']) assert.equal(filled.wrongQuestions[id], reference);
+  assert.deepEqual(filled.wrongQuestionFormats['math:F5'], [{text:'高数资料 P028：'}, {text:'003',bold:true,color:'#c00000'}, {text:'、7、12'}]);
+  assert.deepEqual(filled.wrongQuestionFormats['math:G5'], filled.wrongQuestionFormats['math:F5']);
+  assert.deepEqual(filled.wrongQuestionFormats['math:H5'], filled.wrongQuestionFormats['math:F5']);
   assert.deepEqual(filled.memory, saved.memory);
   await page.locator('#sheet-select').selectOption('408-分数面板');
   await page.locator('#wrong-index').click();
@@ -128,9 +140,10 @@ try {
   assert.equal(await page.locator('#show-retention').getAttribute('aria-pressed'), 'false');
   assert.deepEqual(JSON.parse(await readFile(join(appDir, 'progress.json'), 'utf8')), persisted);
   await page.locator('#wrong-index').click();
-  assert.equal(await page.locator('[data-edit="F5"]').inputValue(), reference);
-  assert.equal(await page.locator('[data-edit="G5"]').inputValue(), reference);
-  assert.equal(await page.locator('[data-edit="H5"]').inputValue(), reference);
+  assert.equal(await page.locator('[data-edit="F5"]').textContent(), reference);
+  assert.equal(await page.locator('[data-edit="G5"]').textContent(), reference);
+  assert.equal(await page.locator('[data-edit="H5"]').textContent(), reference);
+  assert.equal(await page.locator('[data-edit="F5"] span[style*="#c00000"]').textContent(), '003');
   assert.equal(persisted.wrongQuestions['cs:F5'], '408资料 P015：0009');
 
   await page.locator('[data-node]').first().fill('90');
@@ -146,7 +159,7 @@ try {
   assert.equal(await page.locator('[data-cell="D1"]').textContent(), '355');
   await page.screenshot({ path: 'test-results/native-desktop.png' });
   assert.deepEqual(errors, []);
-  console.log('Native release: v10 spacing-corrected migration, backup, math/408 text persistence, horizontal fill, English precision, dual-color rate view, removed controls, close-flush, restart and same-day replacement passed.');
+  console.log('Native release: v11 rich-text migration, backup, math/408 text persistence, horizontal fill, English precision, dual-color rate view, removed controls, close-flush, restart and same-day replacement passed.');
 } finally {
   if (child && child.exitCode === null) { const exit = new Promise(resolve => child.once('exit', resolve)); child.kill(); await exit; }
   await browser?.close().catch(() => {});

@@ -67,9 +67,9 @@ npm run build
 | `tests/migration.test.js` | v2 可还原曲线重算、保留日期/输入、幂等、拒绝不可还原记录 | 任意复杂旧历史的回放 |
 | `tests/ui.spec.js` | 表格布局、408 密度、节点展开、编辑栏、精度、所有工作表、损坏记录保护 | Rust IPC 与 Windows 关闭事件 |
 | `tests/forgetting.spec.js` | 模拟北京时间午夜、禁止降低、未编辑不复习、离线重开、浏览器自动保存与迁移 | 实机时钟故障、断电写入恢复 |
-| `scripts/native-smoke.mjs` | 隔离 WebView、v10 → v11 算法迁移与题号保留、独立备份、横向填充及重启、英语精度与 Rust 保存、关闭提交、重开不重置 | 多进程并发及所有文件系统故障 |
+| `scripts/native-smoke.mjs` | 隔离 WebView、v11 → v12 错题格式迁移（不改曲线）与题号保留、独立备份、横向填充及重启、英语精度与 Rust 保存、关闭提交、重开不重置 | 多进程并发及所有文件系统故障 |
 
-1.8.0 当前有 37 项 Node 测试和 24 项 Playwright 测试；增删用例后更新覆盖说明，不把固定数量当作唯一验收标准。Playwright 会启动/复用 1420 端口服务，运行前确认复用的是本项目。
+1.9.0 当前有 40 项 Node 测试和 27 项 Playwright 测试；增删用例后更新覆盖说明，不把固定数量当作唯一验收标准。Playwright 会启动/复用 1420 端口服务，运行前确认复用的是本项目。
 
 原生验证必须按顺序执行，并逐步确认退出码成功：
 
@@ -110,8 +110,8 @@ npm run extract
 
 ```powershell
 Get-FileHash -LiteralPath 'src-tauri/target/release/kaoyan-panel-desktop.exe'
-Get-FileHash -LiteralPath '../桌面应用/考研综合面板-1.8.0.exe'
-(Get-Item -LiteralPath '../桌面应用/考研综合面板-1.8.0.exe').VersionInfo.ProductVersion
+Get-FileHash -LiteralPath '../桌面应用/考研综合面板-1.9.0.exe'
+(Get-Item -LiteralPath '../桌面应用/考研综合面板-1.9.0.exe').VersionInfo.ProductVersion
 ```
 
 不要用单元测试通过替代 exe 启动/存盘验证，也不要把生成 exe 等同于安装包、代码签名、自动更新或跨系统兼容性已完成。
@@ -150,3 +150,6 @@ Get-FileHash -LiteralPath '../桌面应用/考研综合面板-1.8.0.exe'
 ### 发布后固定到“开始”（2026-10-20用户要求）
 
 以后每次生成正式exe并交付，更新桌面快捷方式后，将最新版固定到Windows“开始”。通过Shell.Application读取新exe的Verbs：存在“从开始菜单取消固定”等取消固定项即已固定；否则执行对应“固定到开始”项，再重新读取菜单确认。不要误执行取消固定项。删除旧exe前取消旧版本的固定，防止残留失效入口。若系统未提供可执行的固定操作，则报告实际状态，不以创建普通开始菜单快捷方式冒充固定成功。当前1.8.0已通过取消固定菜单项确认处于固定状态。
+
+
+1.9.0增加错题格局部文字Ctrl+B加粗和字体颜色，横向填充复制格式，格式随文字持久保存。记录v12新增wrongQuestionFormats；v11升级不重算曲线，独立备份progress-before-rich-text-v11.json。正式程序及桌面/开始固定入口随发布更新。

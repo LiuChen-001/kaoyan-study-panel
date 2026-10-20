@@ -13,7 +13,7 @@ test('v7 migration adds 492 empty text records while preserving all learning dat
   old.english.articles.push({ id: 'reading', title: 'Reading', memory: initializeMemory(60, '2026-10-13') });
   const before = structuredClone(old);
   const next = migrateState(data, old);
-  assert.equal(next.version, 11);
+  assert.equal(next.version, 12);
   assert.equal(Object.keys(next.wrongQuestions).length, 492);
   assert.ok(Object.values(next.wrongQuestions).every(value => value === ''));
   const { wrongQuestions: added, version, ...preserved } = next;

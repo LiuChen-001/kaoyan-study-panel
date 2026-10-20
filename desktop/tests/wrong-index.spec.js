@@ -49,8 +49,8 @@ for (const [sheet, row, nextRow, nodeId] of [['数学-分数面板', 5, 8, 'math
     await expect(source).not.toHaveClass(/selected/);
 
     await drag(page, `F${row}`, `H${row}`);
-    await expect(input(page, `G${row}`)).toHaveValue(text);
-    await expect(input(page, `H${row}`)).toHaveValue(text);
+    await expect(input(page, `G${row}`)).toHaveText(text);
+    await expect(input(page, `H${row}`)).toHaveText(text);
     const filled = await saved(page);
     expect(filled.memory).toEqual(learning.memory);
     expect(filled.annual).toEqual(learning.annual);
@@ -58,13 +58,13 @@ for (const [sheet, row, nextRow, nodeId] of [['数学-分数面板', 5, 8, 'math
     expect(filled.english).toEqual(learning.english);
     await drag(page, `F${row}`, `F${nextRow}`); // Vertical drag must not fill.
     expect(await saved(page)).toEqual(filled);
-    await expect(input(page, `F${nextRow}`)).toHaveValue('');
+    await expect(input(page, `F${nextRow}`)).toHaveText('');
     // A blank source clears only the horizontally selected wrong-reference cells.
     await edit(page, `I${row}`, 'keep');
     await edit(page, `G${row}`, '');
     await drag(page, `G${row}`, `H${row}`);
-    await expect(input(page, `H${row}`)).toHaveValue('');
-    await expect(input(page, `I${row}`)).toHaveValue('keep');
+    await expect(input(page, `H${row}`)).toHaveText('');
+    await expect(input(page, `I${row}`)).toHaveText('keep');
     await input(page, `G${row}`).focus();
     await page.locator('#formula').fill('资料B P030：0008、9');
     await page.locator('#formula').press('Enter');
@@ -74,8 +74,8 @@ for (const [sheet, row, nextRow, nodeId] of [['数学-分数面板', 5, 8, 'math
     expect(await saved(page)).toEqual(current);
     await page.reload(); await page.locator('#sheet-select').selectOption(sheet);
     await page.locator('#wrong-index').click();
-    await expect(input(page, `F${row}`)).toHaveValue(text);
-    await expect(input(page, `G${row}`)).toHaveValue('资料B P030：0008、9');
+    await expect(input(page, `F${row}`)).toHaveText(text);
+    await expect(input(page, `G${row}`)).toHaveText('资料B P030：0008、9');
     expect(await saved(page)).toEqual(current);
     await page.screenshot({ path: `test-results/${sheet.startsWith('数学') ? 'math' : 'cs'}-wrong-index.png` });
     await page.setViewportSize({ width: 720, height: 760 });
@@ -97,9 +97,9 @@ test('v7 storage migration creates an independent backup and leaves curves untou
   await page.reload();
   await expect(page.locator('#save-status')).toHaveText('已保存到本机');
   const next = await saved(page);
-  expect(next.version).toBe(11);
+  expect(next.version).toBe(12);
   expect(next.memory).toEqual(legacy.memory);
   expect(Object.values(next.wrongQuestions).every(text => text === '')).toBe(true);
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kaoyan-panel-before-spacing-v7')))).toEqual(legacy);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kaoyan-panel-before-rich-text-v7')))).toEqual(legacy);
   await page.reload(); expect(await saved(page)).toEqual(next);
 });

@@ -1,13 +1,15 @@
 import { today, validateMemory, currentMastery, migrateMinimumMemory } from './memory.js';
 import { migrateWindowMemory, migrateRecallMemory } from './memory-migration.js';
 import { validateEnglish } from './english.js';
+import { validateWrongFormat } from './wrong-text.js';
 
 export const sectionsOf = subject => subject.blocks.flatMap(block => block.sections);
 export const nodesOf = subject => sectionsOf(subject).flatMap(section => section.nodes);
 
 export function initialState(data) {
   return {
-    version: 11,
+    version: 12,
+    wrongQuestionFormats: {},
     wrongQuestions: Object.fromEntries(data.subjects.flatMap(nodesOf).map(node => [node.id, ''])),
     english: { articles: [] },
     memory: Object.fromEntries(data.subjects.flatMap(nodesOf).map(node => [node.id, null])),
@@ -17,7 +19,7 @@ export function initialState(data) {
 }
 
 export function validateState(data, state) {
-  if (!state || ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].includes(state.version)) throw new Error('记录版本不受支持');
+  if (!state || ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].includes(state.version)) throw new Error('记录版本不受支持');
   if (state.version >= 4) validateEnglish(state.english, state.version >= 5, state.version >= 6);
   const finite = (v, max = Infinity) => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= max;
   for (const subject of data.subjects) {
@@ -39,14 +41,22 @@ export function validateState(data, state) {
       }
     }
   }
+  if (state.version >= 12) {
+    if (!state.wrongQuestionFormats || typeof state.wrongQuestionFormats !== 'object' || Array.isArray(state.wrongQuestionFormats)) throw new Error('缺少错题文字格式记录');
+    for (const [id, runs] of Object.entries(state.wrongQuestionFormats)) {
+      if (!Object.hasOwn(state.wrongQuestions, id)) throw new Error('错题文字格式节点无效');
+      validateWrongFormat(state.wrongQuestions[id], runs);
+    }
+  }
   return state;
 }
 
 export function migrateState(data, state, backups = []) {
   validateState(data, state);
-  if (state.version === 11) return state;
+  if (state.version === 12) return state;
+  if (state.version === 11) return validateState(data, { ...state, version: 12, wrongQuestionFormats: {} });
   const wrongQuestions = state.version >= 8 ? state.wrongQuestions : Object.fromEntries(data.subjects.flatMap(nodesOf).map(node => [node.id, '']));
-  if (state.version >= 6) return validateState(data, { ...state, version: 11, wrongQuestions,
+  if (state.version >= 6) return validateState(data, { ...state, version: 12, wrongQuestions, wrongQuestionFormats: {},
     memory: Object.fromEntries(Object.entries(state.memory).map(([id, memory]) => [id, migrateRecallMemory(memory)])),
     english: { articles: state.english.articles.map(article => ({ ...article, memory: migrateRecallMemory(article.memory) })) },
   });
@@ -55,7 +65,7 @@ export function migrateState(data, state, backups = []) {
     try { return migrateWindowMemory(memory, candidates); }
     catch (error) { throw new Error(`${label}：${error.message}`); }
   };
-  if (state.version === 4 || state.version === 5) return validateState(data, { ...state, version: 11, wrongQuestions,
+  if (state.version === 4 || state.version === 5) return validateState(data, { ...state, version: 12, wrongQuestions, wrongQuestionFormats: {},
     memory: Object.fromEntries(Object.entries(state.memory).map(([id, memory]) => [id, migrate(memory, previous.map(s => s.memory?.[id]), id)])),
     english: { articles: state.english.articles.map(article => ({ ...article, memory: migrate(article.memory, previous.map(s => s.english?.articles?.find(a => a.id === article.id)?.memory), article.title) })) },
   });

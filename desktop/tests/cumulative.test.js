@@ -74,7 +74,7 @@ test('v6/v7/v8/v9/v10 recalculate only the latest review, preserving samples, or
     assert.deepEqual(next.annual, old.annual); assert.deepEqual(next.weights, old.weights);
     assert.equal(next.wrongQuestions['math:F5'], version >= 8 ? '习题 P028：003' : '');
     assert.deepEqual(old, before);
-    assert.equal(next.version, 11);
+    assert.equal(next.version, 12);
     assert.deepEqual(migrateState(data, JSON.parse(JSON.stringify(next))), next);
     const replaced = review(after, 100, dateAt(4));
     close(replaced.recentPreInterventionMasteries[0], predictMastery(after, dateAt(4)));
