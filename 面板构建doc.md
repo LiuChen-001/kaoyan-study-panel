@@ -623,7 +623,7 @@ Excel 界面输入公式以 `=` 开头；`.xlsx` 内部 `<f>` 节点的公式文
 
 ### 12.2 内容提取与代码职责
 
-在 `desktop/` 执行 `npm run extract`，由 [scripts/extract.py](desktop/scripts/extract.py) 只读综合工作簿，写入 [src/data.json](desktop/src/data.json)。该脚本保留有效单元格、公式文本、样式、合并、行列尺寸与冻结信息，同时生成业务数据树和源文件指纹。
+以下为原始提取流程：综合源工作簿现已移除，应用使用现有 [src/data.json](desktop/src/data.json)，运行与构建不依赖该工作簿。如需重新提取，须自行准备并将工作簿放回项目根目录的 `考研综合面板.xlsx`，再在 `desktop/` 执行 `npm run extract`，由 [scripts/extract.py](desktop/scripts/extract.py) 只读源文件并写入内置数据。该脚本保留有效单元格、公式文本、样式、合并、行列尺寸与冻结信息，同时生成业务数据树和源文件指纹。
 
 运行时的公式计算不依赖 Excel 缓存或通用公式求值器：
 
