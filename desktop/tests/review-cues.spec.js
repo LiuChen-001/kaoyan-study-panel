@@ -35,7 +35,7 @@ for (const [sheet, prefix] of [['数学-分数面板', 'math'], ['408-分数面�
     expect(await stored(page)).toBe(before); // Focus/blur cannot create a first learning record.
     await page.locator('#show-retention').click();
     await expect(cell(page, nodes[6].id).locator('.mastery-readout')).toHaveText('-');
-    await expect(cell(page, nodes[0].id).locator('.mastery-readout')).toHaveText('0.00（50.00%）');
+    await expect(cell(page, nodes[0].id).locator('.mastery-readout')).toHaveText('0.00（60.00%）');
     await page.locator('#wrong-index').click();
     for (let i = 0; i < nodes.length; i++) await expect(cell(page, nodes[i].id)).toHaveCSS('background-color', colors[cues[i]]);
     expect(await stored(page)).toBe(before);

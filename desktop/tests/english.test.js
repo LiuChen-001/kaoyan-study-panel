@@ -23,8 +23,8 @@ test('articles start unlearned; totals use unrounded curves; integer displays tr
   assert.equal(displayValue('英语', 'C3', { value: 99.9999 }), '99');
   assert.equal(displayValue('数学-分数面板', 'F5', { value: 88.999999 }), '89.00');
   const later = sheetValues(data, '英语', state, '2026-10-09');
-  assert.equal(displayValue('英语', 'C3', later.C3), '44');
-  assert.equal(displayValue('英语', 'D1', later.D1), '177');
+  assert.equal(displayValue('英语', 'C3', later.C3), '53');
+  assert.equal(displayValue('英语', 'D1', later.D1), '213');
   state.english = addArticle(state.english, 'second', 'article-2');
   state.english.articles[1].memory = review(null, 12.34567, '2026-10-08');
   assert.equal(englishMetrics(state.english, '2026-10-08').articles, 88.999999 / 100 + 12.34567 / 100);
@@ -37,7 +37,7 @@ test('v3 migration adds only empty English state and is idempotent', () => {
   old.annual['math:4']['2025'] = 9.87654321;
   const snapshot = structuredClone(old);
   const next = migrateState(data, old);
-  assert.equal(next.version, 12);
+  assert.equal(next.version, 13);
   assert.deepEqual(next.english, { articles: [] });
   assert.deepEqual(next.memory, old.memory);
   assert.deepEqual(next.annual, old.annual);

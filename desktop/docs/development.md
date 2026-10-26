@@ -63,13 +63,14 @@ npm run build
 | `tests/model.test.js` | 表/节点数量、年度分摊、权重、全精度、两科全掌握 150、空白年份 | 原生文件保存 |
 | `tests/wrong-index.test.js` / `tests/wrong-index.spec.js` | 492 空记录迁移、稳定 ID、三行地址/公式、文本精度、同行填充及纵向拒绝、清空、自动保存和重启 | 实机文件系统故障 |
 | `tests/memory.test.js` | 日期、初学、原始预测历史、五次记录窗口、不规则间隔、跨日和精度边界 | 用户真实历史是否完整 |
-| `tests/cumulative.test.js` | 90%/96% 拟合目标、多轮累计、末次条件相同仍区分历史、间隔与掌握度独立作用、v6～v8 保留历史与题号迁移 | 个体真实记忆表现 |
+| `tests/cumulative.test.js` | 初始50%时的历史90%/96%校准、多轮累计、末次条件相同仍区分历史、间隔与掌握度独立作用、v6～v8 保留历史与题号迁移 | 个体真实记忆表现 |
+| `tests/initial-sixty.test.js` / `tests/initial-sixty.spec.js` | 初学60%、同日及跨日、v11/v12仅迁移未复习节点、已复习历史及旧快照保留、重开幂等 | 任意手动损坏的旧记录 |
 | `tests/migration.test.js` | v2 可还原曲线重算、保留日期/输入、幂等、拒绝不可还原记录 | 任意复杂旧历史的回放 |
 | `tests/ui.spec.js` | 表格布局、408 密度、节点展开、编辑栏、精度、所有工作表、损坏记录保护 | Rust IPC 与 Windows 关闭事件 |
 | `tests/forgetting.spec.js` | 模拟北京时间午夜、禁止降低、未编辑不复习、离线重开、浏览器自动保存与迁移 | 实机时钟故障、断电写入恢复 |
-| `scripts/native-smoke.mjs` | 隔离 WebView、v11 → v12 错题格式迁移（不改曲线）与题号保留、独立备份、横向填充及重启、英语精度与 Rust 保存、关闭提交、重开不重置 | 多进程并发及所有文件系统故障 |
+| `scripts/native-smoke.mjs` | 隔离WebView、当前初始率迁移与已复习曲线保留、题号保留、独立备份、横向填充及重启、英语精度与 Rust 保存、关闭提交、重开不重置 | 多进程并发及所有文件系统故障 |
 
-1.10.0 当前有 40 项 Node 测试和 32 项 Playwright 测试；增删用例后更新覆盖说明，不把固定数量当作唯一验收标准。Playwright 会启动/复用 1420 端口服务，运行前确认复用的是本项目。
+1.11.0当前有44项Node测试和36项Playwright测试。增删用例后更新覆盖说明，不把固定数量当作唯一验收标准。Playwright 会启动/复用 1420 端口服务，运行前确认复用的是本项目。
 
 原生验证必须按顺序执行，并逐步确认退出码成功：
 
@@ -110,8 +111,8 @@ npm run extract
 
 ```powershell
 Get-FileHash -LiteralPath 'src-tauri/target/release/kaoyan-panel-desktop.exe'
-Get-FileHash -LiteralPath '../桌面应用/考研综合面板-1.10.0.exe'
-(Get-Item -LiteralPath '../桌面应用/考研综合面板-1.10.0.exe').VersionInfo.ProductVersion
+Get-FileHash -LiteralPath '../桌面应用/考研综合面板-1.11.0.exe'
+(Get-Item -LiteralPath '../桌面应用/考研综合面板-1.11.0.exe').VersionInfo.ProductVersion
 ```
 
 不要用单元测试通过替代 exe 启动/存盘验证，也不要把生成 exe 等同于安装包、代码签名、自动更新或跨系统兼容性已完成。
@@ -153,3 +154,6 @@ Get-FileHash -LiteralPath '../桌面应用/考研综合面板-1.10.0.exe'
 
 
 1.9.0增加错题格局部文字Ctrl+B加粗和字体颜色，横向填充复制格式，格式随文字持久保存。记录v12新增wrongQuestionFormats；v11升级不重算曲线，独立备份progress-before-rich-text-v11.json。正式程序及桌面/开始固定入口随发布更新。
+
+
+1.11.0验收：新初学及初学当天覆盖的p均为0.6；只将已有未复习曲线顶层p升级，复习过的完整memory（含origin）精确不变；日期不重置、不新增复习；三科一致，重启迁移幂等且独立备份可恢复。复习公式的0.5与C/B/d不得更改，旧初始0.5校准应以显式历史夹具验证。

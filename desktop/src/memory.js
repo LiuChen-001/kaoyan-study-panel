@@ -1,4 +1,5 @@
 const DAY_MS = 86400000;
+export const INITIAL_RETENTION = 0.6;
 const REVIEW_STRENGTH = 28.711284228111044;
 const SPACING_DAYS = 20.164273571058075;
 const calendar = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' });
@@ -19,7 +20,7 @@ export function initializeMemory(percent, date = today()) {
   dayNumber(date);
   if (!Number.isFinite(percent) || percent <= 0 || percent > 100) throw new Error('初学掌握度必须大于 0 且不超过 100');
   if (percent / 100 === 0) throw new Error('初学掌握度小于可保存的浮点精度范围');
-  return { initialLearnedDate: date, lastInterventionDate: date, baseMastery: percent / 100, retentionPerDay: 0.5, recentPreInterventionMasteries: [0, 0, 0, 0, 0], recentReviewDates: [], reviewOrigin: null };
+  return { initialLearnedDate: date, lastInterventionDate: date, baseMastery: percent / 100, retentionPerDay: INITIAL_RETENTION, recentPreInterventionMasteries: [0, 0, 0, 0, 0], recentReviewDates: [], reviewOrigin: null };
 }
 export function validateMemory(memory, requireOrigin = false, requireDates = false) {
   if (memory === null) return;
@@ -65,7 +66,7 @@ export function review(memory, percent, date = today()) {
   const pre = predictMastery(memory, date);
   const next = percent / 100;
   if (percent <= pre * 100 || next <= pre) throw new Error('只能提高当前预测掌握度；降低或保持原值不计为复习');
-  if (total === 0) return { ...memory, baseMastery: next, retentionPerDay: 0.5 };
+  if (total === 0) return { ...memory, baseMastery: next, retentionPerDay: INITIAL_RETENTION };
   if (tau === 0) {
     const origin = memory.reviewOrigin;
     if (!origin) throw new Error('旧记录缺少当天修改前的曲线，无法准确覆盖；原记录已保留，次日可继续复习');

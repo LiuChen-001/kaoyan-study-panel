@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { initialState } from '../src/model.js';
-import { initializeMemory, review } from '../src/memory.js';
+import { review } from '../src/memory.js';
+import { legacyInitializeMemory } from './legacy-fixtures.js';
 import data from '../src/data.json' with { type: 'json' };
 const saved = page => page.evaluate(() => JSON.parse(localStorage.getItem('kaoyan-panel-v1')));
 const editor = (page, address = 'F5') => page.locator(`[data-edit="${address}"]`);
@@ -72,11 +73,11 @@ for (const sheet of ['数学-分数面板', '408-分数面板']) {
 
 test('v11 upgrade preserves plain text and all existing memory without recalculation', async ({ page }) => {
   const { wrongQuestionFormats, ...legacy } = initialState(data); legacy.version = 11;
-  legacy.memory['math:F5'] = review(initializeMemory(100, '2026-10-01'), 100, '2026-10-09');
+  legacy.memory['math:F5'] = review(legacyInitializeMemory(100, '2026-10-01'), 100, '2026-10-09');
   legacy.wrongQuestions['math:F5'] = '资料 P028：003';
   await page.goto('http://127.0.0.1:1420');
   await page.evaluate(s => localStorage.setItem('kaoyan-panel-v1', JSON.stringify(s)), legacy);
   await page.reload(); await expect(page.locator('#save-status')).toHaveText('已保存到本机');
-  expect(await saved(page)).toEqual({ ...legacy, version: 12, wrongQuestionFormats: {} });
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kaoyan-panel-before-rich-text-v11')))).toEqual(legacy);
+  expect(await saved(page)).toEqual({ ...legacy, version: 13, wrongQuestionFormats: {} });
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kaoyan-panel-before-initial-sixty-v11')))).toEqual(legacy);
 });

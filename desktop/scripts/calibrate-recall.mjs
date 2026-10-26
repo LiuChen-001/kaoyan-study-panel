@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+// Historical calibration from initial p=.5. Initial .6 does not retune these coefficients.
 
 function rates(C, B, gaps) {
   let p = .5;

@@ -3,14 +3,14 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { initialState, migrateState } from '../src/model.js';
 import { initializeMemory, predictMastery, review, updatedRetention } from '../src/memory.js';
-import { windowReview, nonzeroReview, cumulativeReview, recallReview } from './legacy-fixtures.js';
+import { windowReview, nonzeroReview, cumulativeReview, recallReview, legacyInitializeMemory } from './legacy-fixtures.js';
 const data = JSON.parse(readFileSync(new URL('../src/data.json', import.meta.url)));
 const close = (a, b) => assert.ok(Math.abs(a - b) < 1e-13, `${a} != ${b}`);
 const dateAt = day => new Date(Date.UTC(2026, 9, 1 + day)).toISOString().slice(0, 10);
 
-test('three reviews at 90% reach the two calibration targets', () => {
+test('unchanged review formula retains the historical targets when initial p is explicitly .5', () => {
   for (const [gaps, expected] of [[[1, 1, 1], [.6831410702376615, .8147675270339196, .9]], [[1, 2, 5], [.6831410702376615, .8504704044109391, .96]]]) {
-    let memory = initializeMemory(90, dateAt(0)), day = 0;
+    let memory = legacyInitializeMemory(90, dateAt(0)), day = 0;
     for (let i = 0; i < gaps.length; i++) {
       day += gaps[i];
       memory = review(memory, 90, dateAt(day));
@@ -45,9 +45,9 @@ test('achieved mastery and spacing increase retention when pre-review recall is 
     assert.ok(updatedRetention(p, .9, 2, .4) > updatedRetention(p, .9, 1, .4));
   }
   const old = initializeMemory(90, dateAt(0));
-  const next = review(old, 45.000001, dateAt(1));
+  const next = review(old, 54.000001, dateAt(1));
   assert.ok(next.retentionPerDay > old.retentionPerDay);
-  assert.throws(() => review(next, 45.000001, dateAt(1)), /只能提高/);
+  assert.throws(() => review(next, 54.000001, dateAt(1)), /只能提高/);
   assert.throws(() => updatedRetention(1 - Number.EPSILON / 2, 1, 10000, 1), /浮点精度/);
 });
 
@@ -55,7 +55,7 @@ test('v6/v7/v8/v9/v10 recalculate only the latest review, preserving samples, or
   for (const version of [6, 7, 8, 9, 10]) {
     const old = { ...initialState(data), version };
     const legacyReview = version === 10 ? recallReview : version === 6 ? windowReview : version === 9 ? cumulativeReview : nonzeroReview;
-    const prior = legacyReview(initializeMemory(80, dateAt(0)), 100, dateAt(1));
+    const prior = legacyReview(legacyInitializeMemory(80, dateAt(0)), 100, dateAt(1));
     const memory = legacyReview(prior, 100, dateAt(3));
     old.memory['math:F5'] = memory;
     old.memory['cs:F5'] = structuredClone(memory);
@@ -74,7 +74,7 @@ test('v6/v7/v8/v9/v10 recalculate only the latest review, preserving samples, or
     assert.deepEqual(next.annual, old.annual); assert.deepEqual(next.weights, old.weights);
     assert.equal(next.wrongQuestions['math:F5'], version >= 8 ? '习题 P028：003' : '');
     assert.deepEqual(old, before);
-    assert.equal(next.version, 12);
+    assert.equal(next.version, 13);
     assert.deepEqual(migrateState(data, JSON.parse(JSON.stringify(next))), next);
     const replaced = review(after, 100, dateAt(4));
     close(replaced.recentPreInterventionMasteries[0], predictMastery(after, dateAt(4)));
@@ -88,7 +88,7 @@ test('lower remaining recall pulls retention toward .5; long gaps approach initi
   const rates = [0, .001, .01, .1, .5, .9, 1].map(pre => updatedRetention(.8, .95, 5, pre));
   assert.equal(rates[0], .5);
   assert.ok(rates.every((p, i) => i === 0 || p > rates[i - 1]));
-  const initial = initializeMemory(90, dateAt(0));
+  const initial = legacyInitializeMemory(90, dateAt(0));
   const hundred = review(initial, 95, dateAt(100));
   assert.ok(Math.abs(hundred.retentionPerDay - .5) < 1e-13);
   assert.equal(review(initial, 95, dateAt(10000)).retentionPerDay, .5);
@@ -100,8 +100,8 @@ test('lower remaining recall pulls retention toward .5; long gaps approach initi
   for (const pre of [undefined, NaN, -1, 1.1]) assert.throws(() => updatedRetention(.5, .9, 1, pre), /复习前/);
 });
 
-test('reviewing from 100 whenever mastery first falls below 50 follows approximate requested gaps', () => {
-  let memory = initializeMemory(100, dateAt(0)), day = 0;
+test('historical threshold review sequence remains valid with explicit initial .5', () => {
+  let memory = legacyInitializeMemory(100, dateAt(0)), day = 0;
   const gaps = [], rates = [];
   for (let n = 0; n < 6; n++) {
     const half = Math.log(.5) / Math.log(memory.retentionPerDay);

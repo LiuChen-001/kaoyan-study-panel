@@ -97,9 +97,9 @@ test('v7 storage migration creates an independent backup and leaves curves untou
   await page.reload();
   await expect(page.locator('#save-status')).toHaveText('已保存到本机');
   const next = await saved(page);
-  expect(next.version).toBe(12);
+  expect(next.version).toBe(13);
   expect(next.memory).toEqual(legacy.memory);
   expect(Object.values(next.wrongQuestions).every(text => text === '')).toBe(true);
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kaoyan-panel-before-rich-text-v7')))).toEqual(legacy);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kaoyan-panel-before-initial-sixty-v7')))).toEqual(legacy);
   await page.reload(); expect(await saved(page)).toEqual(next);
 });

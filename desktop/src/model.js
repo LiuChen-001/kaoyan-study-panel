@@ -1,4 +1,4 @@
-import { today, validateMemory, currentMastery, migrateMinimumMemory } from './memory.js';
+import { today, validateMemory, currentMastery, migrateMinimumMemory, INITIAL_RETENTION } from './memory.js';
 import { migrateWindowMemory, migrateRecallMemory } from './memory-migration.js';
 import { validateEnglish } from './english.js';
 import { validateWrongFormat } from './wrong-text.js';
@@ -8,7 +8,7 @@ export const nodesOf = subject => sectionsOf(subject).flatMap(section => section
 
 export function initialState(data) {
   return {
-    version: 12,
+    version: 13,
     wrongQuestionFormats: {},
     wrongQuestions: Object.fromEntries(data.subjects.flatMap(nodesOf).map(node => [node.id, ''])),
     english: { articles: [] },
@@ -19,7 +19,7 @@ export function initialState(data) {
 }
 
 export function validateState(data, state) {
-  if (!state || ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].includes(state.version)) throw new Error('记录版本不受支持');
+  if (!state || ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13].includes(state.version)) throw new Error('记录版本不受支持');
   if (state.version >= 4) validateEnglish(state.english, state.version >= 5, state.version >= 6);
   const finite = (v, max = Infinity) => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= max;
   for (const subject of data.subjects) {
@@ -53,6 +53,19 @@ export function validateState(data, state) {
 
 export function migrateState(data, state, backups = []) {
   validateState(data, state);
+  if (state.version === 13) return state;
+  const previous = migratePreviousState(data, state, backups);
+  // Only an unreviewed initial curve changes. A review's saved origin is history.
+  const migrateInitial = memory => memory && memory.initialLearnedDate === memory.lastInterventionDate && memory.recentReviewDates.length === 0 && memory.reviewOrigin === null
+    ? { ...memory, retentionPerDay: INITIAL_RETENTION } : memory;
+  return validateState(data, { ...previous, version: 13,
+    memory: Object.fromEntries(Object.entries(previous.memory).map(([id, memory]) => [id, migrateInitial(memory)])),
+    english: { articles: previous.english.articles.map(article => ({ ...article, memory: migrateInitial(article.memory) })) },
+  });
+}
+
+function migratePreviousState(data, state, backups = []) {
+  validateState(data, state);
   if (state.version === 12) return state;
   if (state.version === 11) return validateState(data, { ...state, version: 12, wrongQuestionFormats: {} });
   const wrongQuestions = state.version >= 8 ? state.wrongQuestions : Object.fromEntries(data.subjects.flatMap(nodesOf).map(node => [node.id, '']));
@@ -69,11 +82,11 @@ export function migrateState(data, state, backups = []) {
     memory: Object.fromEntries(Object.entries(state.memory).map(([id, memory]) => [id, migrate(memory, previous.map(s => s.memory?.[id]), id)])),
     english: { articles: state.english.articles.map(article => ({ ...article, memory: migrate(article.memory, previous.map(s => s.english?.articles?.find(a => a.id === article.id)?.memory), article.title) })) },
   });
-  if (state.version === 3) return migrateState(data, { ...state, version: 4, english: { articles: [] } }, backups);
-  if (state.version === 2) return migrateState(data, { ...state, version: 4, english: { articles: [] }, memory: Object.fromEntries(Object.entries(state.memory).map(([id, memory]) => [id, migrateMinimumMemory(memory)])) }, backups);
+  if (state.version === 3) return migratePreviousState(data, { ...state, version: 4, english: { articles: [] } }, backups);
+  if (state.version === 2) return migratePreviousState(data, { ...state, version: 4, english: { articles: [] }, memory: Object.fromEntries(Object.entries(state.memory).map(([id, memory]) => [id, migrateMinimumMemory(memory)])) }, backups);
   const { mastery, ...oldFields } = state;
   // User decision: all legacy nodes start unlearned; never invent study dates.
-  return migrateState(data, validateState(data, { ...oldFields, version: 7, english: { articles: [] }, memory: Object.fromEntries(data.subjects.flatMap(nodesOf).map(node => [node.id, null])) }), backups);
+  return migratePreviousState(data, validateState(data, { ...oldFields, version: 7, english: { articles: [] }, memory: Object.fromEntries(data.subjects.flatMap(nodesOf).map(node => [node.id, null])) }), backups);
 }
 
 export function sectionMetrics(subject, section, state, date = today()) {

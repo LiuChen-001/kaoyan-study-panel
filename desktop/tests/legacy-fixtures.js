@@ -1,3 +1,9 @@
+import { initializeMemory } from '../src/memory.js';
+
+export function legacyInitializeMemory(percent, date) {
+  return { ...initializeMemory(percent, date), retentionPerDay: .5 };
+}
+
 // Released v3/v4 algorithm, retained solely for migration fixtures.
 export function legacyInitial(percent, date) {
   return { initialLearnedDate: date, lastInterventionDate: date, baseMastery: percent / 100,

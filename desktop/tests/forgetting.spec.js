@@ -18,9 +18,9 @@ test('Shanghai midnight refresh, strict increases, idle editor, offline reload w
   await page.clock.setSystemTime(new Date('2026-10-03T16:10:00Z'));
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await page.locator('[data-cell="A1"]').click();
-  await expect(input(page)).toHaveValue('40.00');
+  await expect(input(page)).toHaveValue('48.00');
   expect(await state(page)).toEqual(first);
-  await expect(page.locator('[data-cell="B1"]')).toHaveText('0.22');
+  await expect(page.locator('[data-cell="B1"]')).toHaveText('0.26');
   await input(page).fill('39'); await input(page).press('Tab');
   await expect(page.locator('#input-error')).toContainText('只能提高');
   await input(page).focus();
@@ -28,7 +28,7 @@ test('Shanghai midnight refresh, strict increases, idle editor, offline reload w
   await page.locator('[data-cell="A1"]').click();
   await expect(page.locator('#save-status')).toHaveText('已保存到本机');
   const reviewed = await state(page);
-  expect(reviewed.memory['math:F5'].recentPreInterventionMasteries).toEqual([0.4, 0, 0, 0, 0]);
+  expect(reviewed.memory['math:F5'].recentPreInterventionMasteries).toEqual([0.48, 0, 0, 0, 0]);
   expect(reviewed.memory['math:F5'].initialLearnedDate).toBe('2026-10-03');
   const expected = 60 * reviewed.memory['math:F5'].retentionPerDay;
   await page.clock.setSystemTime(new Date('2026-10-04T16:10:00Z'));
@@ -49,7 +49,7 @@ test('v1 migration resets only legacy mastery once, backs it up, and never inven
   await expect(page.locator('#save-status')).toHaveText('已保存到本机');
   expect(Object.values((await state(page)).memory).every(value => value === null)).toBe(true);
   expect((await state(page)).annual['math:4']['2025']).toBe(9.87654321);
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kaoyan-panel-before-rich-text-v1')))).toEqual(legacy);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kaoyan-panel-before-initial-sixty-v1')))).toEqual(legacy);
   await input(page).fill('80'); await input(page).press('Tab');
   const learned = await state(page);
   await page.reload(); expect(await state(page)).toEqual(learned);
@@ -68,10 +68,10 @@ test('v2 upgrade recalculates the current curve once and preserves a recoverable
   await expect(page.locator('#save-status')).toHaveText('已保存到本机');
   await expect(input(page)).toHaveValue('70.20');
   const migrated = await state(page);
-  expect(migrated.version).toBe(12);
+  expect(migrated.version).toBe(13);
   expect(migrated.memory['math:F5'].retentionPerDay).toBeCloseTo(0.7020287504089231, 14);
   expect(migrated.memory['math:F5'].lastInterventionDate).toBe('2026-10-06');
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kaoyan-panel-before-rich-text-v2')))).toEqual(previous);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kaoyan-panel-before-initial-sixty-v2')))).toEqual(previous);
   await page.reload(); expect(await state(page)).toEqual(migrated);
   await page.clock.setSystemTime(new Date('2026-10-08T04:00:00Z'));
   await page.reload();

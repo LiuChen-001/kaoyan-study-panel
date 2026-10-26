@@ -1,4 +1,4 @@
-import { legacyInitial, legacyReview } from './legacy-fixtures.js';
+import { legacyInitial, legacyReview, legacyInitializeMemory } from './legacy-fixtures.js';
 import { test, expect } from '@playwright/test';
 import { initializeMemory, review } from '../src/memory.js';
 
@@ -32,7 +32,7 @@ for (const [sheet, address, id] of [['数学-分数面板', 'F5', 'math:F5'], ['
     expect(memory(await state(page))).toEqual(review(initial, 80, '2026-10-09'));
     await edit(90);
     expect(memory(await state(page))).toEqual(review(initial, 90, '2026-10-09'));
-    expect(memory(await state(page)).recentPreInterventionMasteries).toEqual([.4, 0, 0, 0, 0]);
+    expect(memory(await state(page)).recentPreInterventionMasteries).toEqual([.48, 0, 0, 0, 0]);
   });
 }
 
@@ -41,14 +41,14 @@ test('v4 migration backs up existing records and preserves daily origin across r
   await page.goto('http://127.0.0.1:1420');
   await expect(page.locator('#save-status')).toHaveText('已保存到本机');
   const legacy = { ...await state(page), version: 4 };
-  const initial = initializeMemory(80, '2026-10-08');
+  const initial = legacyInitializeMemory(80, '2026-10-08');
   const curve = legacyReview(legacyInitial(80, '2026-10-08'), 60, '2026-10-09');
   legacy.memory['math:F5'] = curve;
   await page.evaluate(value => localStorage.setItem('kaoyan-panel-v1', JSON.stringify(value)), legacy);
   await page.reload();
   await expect(page.locator('#save-status')).toHaveText('已保存到本机');
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kaoyan-panel-before-rich-text-v4')))).toEqual(legacy);
-  expect((await state(page)).version).toBe(12);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kaoyan-panel-before-initial-sixty-v4')))).toEqual(legacy);
+  expect((await state(page)).version).toBe(13);
   await page.locator('[data-edit="F5"]').fill('90');
   await page.locator('[data-edit="F5"]').press('Tab');
   await expect(page.locator('#save-status')).toHaveText('已保存到本机');
