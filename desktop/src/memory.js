@@ -1,5 +1,5 @@
 const DAY_MS = 86400000;
-export const INITIAL_RETENTION = 0.6;
+export const INITIAL_RETENTION = 0.55;
 const REVIEW_STRENGTH = 28.711284228111044;
 const SPACING_DAYS = 20.164273571058075;
 const calendar = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' });

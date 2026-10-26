@@ -32,7 +32,7 @@ for (const [sheet, address, id] of [['数学-分数面板', 'F5', 'math:F5'], ['
     expect(memory(await state(page))).toEqual(review(initial, 80, '2026-10-09'));
     await edit(90);
     expect(memory(await state(page))).toEqual(review(initial, 90, '2026-10-09'));
-    expect(memory(await state(page)).recentPreInterventionMasteries).toEqual([.48, 0, 0, 0, 0]);
+    expect(memory(await state(page)).recentPreInterventionMasteries).toEqual([.8 * .55, 0, 0, 0, 0]);
   });
 }
 
@@ -47,8 +47,8 @@ test('v4 migration backs up existing records and preserves daily origin across r
   await page.evaluate(value => localStorage.setItem('kaoyan-panel-v1', JSON.stringify(value)), legacy);
   await page.reload();
   await expect(page.locator('#save-status')).toHaveText('已保存到本机');
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kaoyan-panel-before-initial-sixty-v4')))).toEqual(legacy);
-  expect((await state(page)).version).toBe(13);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kaoyan-panel-before-initial-fifty-five-v4')))).toEqual(legacy);
+  expect((await state(page)).version).toBe(14);
   await page.locator('[data-edit="F5"]').fill('90');
   await page.locator('[data-edit="F5"]').press('Tab');
   await expect(page.locator('#save-status')).toHaveText('已保存到本机');

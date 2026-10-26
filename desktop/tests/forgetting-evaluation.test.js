@@ -6,8 +6,8 @@ const dataset = JSON.parse(readFileSync(new URL('./fixtures/forgetting-evaluatio
 const dateAt = day => new Date(Date.UTC(2026, 9, 1 + day)).toISOString().slice(0, 10);
 const close = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-13, `${actual} != ${expected}`);
 
-test('current evaluation baseline starts at 60% and predicts no-review mastery without changing the curve', () => {
-  assert.equal(dataset.initialRetention, .6);
+test('current evaluation baseline starts at 55% and predicts no-review mastery without changing the curve', () => {
+  assert.equal(dataset.initialRetention, .55);
   assert.equal(INITIAL_RETENTION, dataset.initialRetention);
   assert.equal(dataset.masteryUnit, 'fraction');
   const { initialMastery, days, masteries } = dataset.predictions;
@@ -18,7 +18,7 @@ test('current evaluation baseline starts at 60% and predicts no-review mastery w
 });
 
 for (const scenario of dataset.schedules) {
-  test(`initial 60% evaluation: ${scenario.id}`, () => {
+  test(`initial 55% evaluation: ${scenario.id}`, () => {
     let memory = initializeMemory(scenario.initialMastery * 100, dateAt(0)), day = 0;
     assert.equal(memory.retentionPerDay, dataset.initialRetention);
     assert.equal(scenario.gaps.length, scenario.retentions.length);
@@ -34,7 +34,7 @@ for (const scenario of dataset.schedules) {
   });
 }
 
-test('initial 60% evaluation: ten reviews trigger on the first natural day strictly below 50%', () => {
+test('initial 55% evaluation: ten reviews trigger on the first natural day strictly below 50%', () => {
   const scenario = dataset.threshold;
   let memory = initializeMemory(scenario.initialMastery * 100, dateAt(0)), day = 0;
   for (const [index, expected] of scenario.reviews.entries()) {
@@ -52,7 +52,7 @@ test('initial 60% evaluation: ten reviews trigger on the first natural day stric
   }
 });
 
-test('initial 60% evaluation: a first review after 100 days still approaches the unchanged 50% formula baseline', () => {
+test('initial 55% evaluation: a first review after 100 days still approaches the unchanged 50% formula baseline', () => {
   const expected = dataset.longGap;
   const memory = initializeMemory(expected.initialMastery * 100, dateAt(0));
   const pre = predictMastery(memory, dateAt(expected.gap));

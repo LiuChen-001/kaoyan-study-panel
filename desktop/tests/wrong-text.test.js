@@ -11,7 +11,7 @@ test('v11 rich-text upgrade preserves every curve and old text without recalcula
   old.memory['math:F5'] = review(initializeMemory(100, '2026-10-01'), 100, '2026-10-09');
   old.wrongQuestions['math:F5'] = '资料 P028：003、7、12';
   const next = migrateState(data, old);
-  assert.deepEqual(next, { ...old, version: 13, wrongQuestionFormats: {} });
+  assert.deepEqual(next, { ...old, version: 14, wrongQuestionFormats: {} });
   assert.deepEqual(migrateState(data, structuredClone(next)), next);
 });
 

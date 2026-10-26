@@ -11,7 +11,7 @@ test('same-day replacements equal one direct intervention, including initial lea
   const noon = review(JSON.parse(JSON.stringify(morning)), 75, '2026-10-02');
   const evening = review(noon, 95, '2026-10-02');
   assert.deepEqual(evening, review(initial, 95, '2026-10-02'));
-  assert.deepEqual(evening.recentPreInterventionMasteries, [.54, 0, 0, 0, 0]);
+  assert.deepEqual(evening.recentPreInterventionMasteries, [.9 * .55, 0, 0, 0, 0]);
   assert.equal(evening.reviewOrigin.lastInterventionDate, '2026-10-01');
   assert.equal(evening.reviewOrigin.reviewOrigin, undefined);
   assert.throws(() => review(evening, 94, '2026-10-02'), /只能提高/);

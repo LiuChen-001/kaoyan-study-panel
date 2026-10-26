@@ -65,7 +65,7 @@ test('English rate view preserves integer mastery and updates after review; remo
   await page.locator('[data-edit="C3"]').fill('88.999999');
   await page.locator('[data-edit="C3"]').press('Tab');
   await page.locator('#show-retention').click();
-  await expect(readout(page, 'C3')).toHaveText('88（60.00%）');
+  await expect(readout(page, 'C3')).toHaveText('88（55.00%）');
   await page.clock.setSystemTime(new Date('2026-10-20T04:00:00Z'));
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await page.locator('[data-edit="C3"]').fill('75.123456789');

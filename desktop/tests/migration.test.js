@@ -18,7 +18,7 @@ test('v2 migration recalculates latest review only, preserving old r, dates, and
   assert.deepEqual(memory.recentReviewDates, ['2026-10-06']);
   assert.equal(memory.baseMastery, 1);
   close(predictMastery(memory, '2026-10-07'), memory.retentionPerDay);
-  assert.equal(next.version, 13);
+  assert.equal(next.version, 14);
   assert.deepEqual(old, snapshot);
   assert.deepEqual(next.annual, old.annual); assert.deepEqual(next.weights, old.weights);
   assert.deepEqual(migrateState(data, JSON.parse(JSON.stringify(next))), next);
@@ -43,7 +43,7 @@ test('v4 multi-review migration uses verified backup dates; no history is invent
   assert.deepEqual(memory.recentReviewDates, ['2026-10-08', '2026-10-06']);
   assert.equal(memory.reviewOrigin.retentionPerDay, prior.retentionPerDay);
   assert.deepEqual(next.english.articles[0].memory, memory);
-  assert.equal(next.memory['math:F5'].retentionPerDay, .6);
+  assert.equal(next.memory['math:F5'].retentionPerDay, .55);
   assert.deepEqual(next.memory['math:F5'].recentPreInterventionMasteries, old.memory['math:F5'].recentPreInterventionMasteries);
   const future = review(memory, 100, '2026-10-09');
   close(future.recentPreInterventionMasteries[0], memory.retentionPerDay);

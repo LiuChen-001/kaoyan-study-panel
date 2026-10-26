@@ -78,6 +78,6 @@ test('v11 upgrade preserves plain text and all existing memory without recalcula
   await page.goto('http://127.0.0.1:1420');
   await page.evaluate(s => localStorage.setItem('kaoyan-panel-v1', JSON.stringify(s)), legacy);
   await page.reload(); await expect(page.locator('#save-status')).toHaveText('已保存到本机');
-  expect(await saved(page)).toEqual({ ...legacy, version: 13, wrongQuestionFormats: {} });
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kaoyan-panel-before-initial-sixty-v11')))).toEqual(legacy);
+  expect(await saved(page)).toEqual({ ...legacy, version: 14, wrongQuestionFormats: {} });
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kaoyan-panel-before-initial-fifty-five-v11')))).toEqual(legacy);
 });

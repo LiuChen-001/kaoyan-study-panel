@@ -45,9 +45,9 @@ test('achieved mastery and spacing increase retention when pre-review recall is 
     assert.ok(updatedRetention(p, .9, 2, .4) > updatedRetention(p, .9, 1, .4));
   }
   const old = initializeMemory(90, dateAt(0));
-  const next = review(old, 54.000001, dateAt(1));
+  const next = review(old, 49.500001, dateAt(1));
   assert.ok(next.retentionPerDay > old.retentionPerDay);
-  assert.throws(() => review(next, 54.000001, dateAt(1)), /只能提高/);
+  assert.throws(() => review(next, 49.500001, dateAt(1)), /只能提高/);
   assert.throws(() => updatedRetention(1 - Number.EPSILON / 2, 1, 10000, 1), /浮点精度/);
 });
 
@@ -74,7 +74,7 @@ test('v6/v7/v8/v9/v10 recalculate only the latest review, preserving samples, or
     assert.deepEqual(next.annual, old.annual); assert.deepEqual(next.weights, old.weights);
     assert.equal(next.wrongQuestions['math:F5'], version >= 8 ? '习题 P028：003' : '');
     assert.deepEqual(old, before);
-    assert.equal(next.version, 13);
+    assert.equal(next.version, 14);
     assert.deepEqual(migrateState(data, JSON.parse(JSON.stringify(next))), next);
     const replaced = review(after, 100, dateAt(4));
     close(replaced.recentPreInterventionMasteries[0], predictMastery(after, dateAt(4)));

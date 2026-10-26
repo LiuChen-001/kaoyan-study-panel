@@ -17,10 +17,10 @@ test('first learning has zero history; queries decay without mutation and surviv
   assert.equal(predictMastery(null, '2026-12-31'), 0);
   const memory = review(null, 80, '2026-10-03');
   const snapshot = JSON.stringify(memory);
-  assert.equal(memory.retentionPerDay, 0.6);
+  assert.equal(memory.retentionPerDay, 0.55);
   assert.deepEqual(memory.recentPreInterventionMasteries, [0, 0, 0, 0, 0]);
-  close(predictMastery(memory, '2026-10-04'), 0.48);
-  close(predictMastery(JSON.parse(snapshot), '2026-10-05'), 0.288);
+  close(predictMastery(memory, '2026-10-04'), 0.44);
+  close(predictMastery(JSON.parse(snapshot), '2026-10-05'), 0.242);
   assert.equal(JSON.stringify(memory), snapshot);
   assert.throws(() => initializeMemory(0));
 });
@@ -43,10 +43,10 @@ test('raw pre-review history advances once per day, keeps five samples and retai
 test('initial-day edits replace initial learning; only increases above the current prediction are allowed', () => {
   const first = initializeMemory(80, '2026-10-03');
   const next = review(first, 90, '2026-10-03');
-  close(next.retentionPerDay, 0.6);
+  close(next.retentionPerDay, 0.55);
   assert.deepEqual(next.recentPreInterventionMasteries, [0, 0, 0, 0, 0]);
   for (const value of [0, 79, 80, 101, NaN]) assert.throws(() => review(first, value, '2026-10-03'));
-  assert.doesNotThrow(() => review(first, 60, '2026-10-04')); // less than last base, greater than today's 48
+  assert.doesNotThrow(() => review(first, 60, '2026-10-04')); // less than last base, greater than today's 44
   assert.throws(() => review(initializeMemory(100, '2026-10-03'), 100, '2026-10-03'));
   assert.throws(() => review(first, 90, '2026-10-02'));
   close(predictMastery(first, '2026-10-02'), 0.8);
@@ -78,7 +78,7 @@ test('long gaps, invalid dates and unrepresentable parameters never silently bec
   assert.ok(after.retentionPerDay > 0 && after.retentionPerDay < 1);
   assert.throws(() => initializeMemory(80, '2026-02-30'));
   assert.throws(() => validateMemory({ ...memory, retentionPerDay: 1 }));
-  assert.equal(review({ ...memory, baseMastery: Number.MIN_VALUE, retentionPerDay: 1 - Number.EPSILON }, 100, '2000-01-01').retentionPerDay, 0.6);
+  assert.equal(review({ ...memory, baseMastery: Number.MIN_VALUE, retentionPerDay: 1 - Number.EPSILON }, 100, '2000-01-01').retentionPerDay, 0.55);
 });
 
 test('legacy migration starts every node unlearned exactly once, preserves annual data and weights', () => {
@@ -93,6 +93,6 @@ test('legacy migration starts every node unlearned exactly once, preserves annua
   assert.deepEqual(migrateState(data, JSON.parse(JSON.stringify(upgraded))), upgraded);
   validateState(data, upgraded);
   const score0 = subjectMetrics(data.subjects[0], upgraded, '2026-10-03').earned;
-  close(subjectMetrics(data.subjects[0], upgraded, '2026-10-04').earned, score0 * .6);
-  close(subjectMetrics(data.subjects[0], upgraded, '2026-10-05').earned, score0 * .36);
+  close(subjectMetrics(data.subjects[0], upgraded, '2026-10-04').earned, score0 * .55);
+  close(subjectMetrics(data.subjects[0], upgraded, '2026-10-05').earned, score0 * .3025);
 });

@@ -1,6 +1,6 @@
 # 桌面应用架构
 
-适用版本：1.11.0。应用是 Windows 上离线运行的 Tauri 2 程序，前端使用原生 JavaScript ES Modules 与 Vite，没有 React/Vue、服务端或数据库。Rust 负责本地文件读写，业务计算在前端纯函数中完成。
+适用版本：1.12.0。应用是 Windows 上离线运行的 Tauri 2 程序，前端使用原生 JavaScript ES Modules 与 Vite，没有 React/Vue、服务端或数据库。Rust 负责本地文件读写，业务计算在前端纯函数中完成。
 
 ## 1. 系统边界与数据来源
 
@@ -52,7 +52,7 @@ flowchart LR
 
 ## 3. 运行生命周期
 
-1. 创建默认记录，再读取已有记录；`validateState → migrateState` 通过后才启用编辑。v1～v5 先用 load_migration_history 读取候选备份，v6～v10 直接使用 reviewOrigin；memory-migration.js 还原参数并重算最近一次 p；首次初始化或版本迁移会安排存盘，v11/v12→v13只调整未复习曲线初始p到0.6、已复习曲线原样保留；正常重开version13不重置节点。
+1. 创建默认记录，再读取已有记录；`validateState → migrateState` 通过后才启用编辑。v1～v5 先用 load_migration_history 读取候选备份，v6～v10 直接使用 reviewOrigin；memory-migration.js 还原参数并重算最近一次 p；首次初始化或版本迁移会安排存盘，v11/v12/v13→v14只调整未复习曲线初始p到0.55、已复习曲线原样保留；正常重开version14不重置节点。
 2. 按工作簿顺序呈现当前表。节点 ID 基于原掌握度单元格，例如 math:F5；展开错题行只映射显示地址，绑定 ID 仍不变。workbook.js 同时映射行高、合并和本表公式引用，跨表引用保留原地址。
 3. 聚焦输入框显示原始数值并记录原文本；未修改就离开，不计为复习，也不把两位小数写回模型。
 4. 提交时先刷新当日预测，保留旧状态副本。掌握度进入 `review`（同日从持久化起点覆盖，异日推进 r 和日期窗口），错题题号写 wrongQuestions 普通文本，年度分数和权重修改各自字段；整体校验失败则恢复旧状态并提示。
@@ -100,3 +100,6 @@ flowchart LR
 
 
 1.10.0：掌握度格按完整精度提示复习：已初学低于30红底、30至50（含50）橙底、高于50保持原背景；未初学灰底短横线，点击仍可开始初学。适用于两科节点及英语文章，跨日/复习/重开自动更新。仅显示变化，算法、已有曲线与记录v12不变。
+
+
+1.12.0：新初学及尚未复习曲线的记忆率为55%；v11/v12/v13升级到v14仅修改这类曲线顶层p并按原日期预测。已复习曲线、origin和复习更新公式保持原状，升级备份progress-before-initial-fifty-five-v<旧版本>.json。当前评测以初始0.55的forgetting-evaluation.json为准，历史50%/60%结果不作为当前目标。

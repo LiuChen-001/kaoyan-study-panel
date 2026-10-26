@@ -8,7 +8,7 @@ export const nodesOf = subject => sectionsOf(subject).flatMap(section => section
 
 export function initialState(data) {
   return {
-    version: 13,
+    version: 14,
     wrongQuestionFormats: {},
     wrongQuestions: Object.fromEntries(data.subjects.flatMap(nodesOf).map(node => [node.id, ''])),
     english: { articles: [] },
@@ -19,7 +19,7 @@ export function initialState(data) {
 }
 
 export function validateState(data, state) {
-  if (!state || ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13].includes(state.version)) throw new Error('记录版本不受支持');
+  if (!state || ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].includes(state.version)) throw new Error('记录版本不受支持');
   if (state.version >= 4) validateEnglish(state.english, state.version >= 5, state.version >= 6);
   const finite = (v, max = Infinity) => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= max;
   for (const subject of data.subjects) {
@@ -53,12 +53,12 @@ export function validateState(data, state) {
 
 export function migrateState(data, state, backups = []) {
   validateState(data, state);
-  if (state.version === 13) return state;
+  if (state.version === 14) return state;
   const previous = migratePreviousState(data, state, backups);
   // Only an unreviewed initial curve changes. A review's saved origin is history.
   const migrateInitial = memory => memory && memory.initialLearnedDate === memory.lastInterventionDate && memory.recentReviewDates.length === 0 && memory.reviewOrigin === null
     ? { ...memory, retentionPerDay: INITIAL_RETENTION } : memory;
-  return validateState(data, { ...previous, version: 13,
+  return validateState(data, { ...previous, version: 14,
     memory: Object.fromEntries(Object.entries(previous.memory).map(([id, memory]) => [id, migrateInitial(memory)])),
     english: { articles: previous.english.articles.map(article => ({ ...article, memory: migrateInitial(article.memory) })) },
   });
@@ -66,7 +66,7 @@ export function migrateState(data, state, backups = []) {
 
 function migratePreviousState(data, state, backups = []) {
   validateState(data, state);
-  if (state.version === 12) return state;
+  if (state.version >= 12) return state;
   if (state.version === 11) return validateState(data, { ...state, version: 12, wrongQuestionFormats: {} });
   const wrongQuestions = state.version >= 8 ? state.wrongQuestions : Object.fromEntries(data.subjects.flatMap(nodesOf).map(node => [node.id, '']));
   if (state.version >= 6) return validateState(data, { ...state, version: 12, wrongQuestions, wrongQuestionFormats: {},

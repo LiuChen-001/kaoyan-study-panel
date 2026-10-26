@@ -1,6 +1,6 @@
 [package]
 name = "kaoyan-panel"
-version = "1.11.0"
+version = "1.12.0"
 description = "考研综合面板"
 edition = "2021"
 

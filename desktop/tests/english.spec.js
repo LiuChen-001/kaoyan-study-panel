@@ -69,14 +69,14 @@ test('English curves decay at Shanghai midnight, permit reviews and keep old sub
   await page.clock.setSystemTime(new Date('2026-10-08T16:10:00Z'));
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await cell(page, 'A1').click();
-  await expect(input(page, 'C3')).toHaveValue('48');
-  await expect(cell(page, 'B1')).toHaveText('0.48');
-  await expect(cell(page, 'D1')).toHaveText('192');
+  await expect(input(page, 'C3')).toHaveValue('44');
+  await expect(cell(page, 'B1')).toHaveText('0.44');
+  await expect(cell(page, 'D1')).toHaveText('176');
   expect(await saved(page)).toEqual(first);
   await input(page, 'C3').focus();
   await page.locator('#formula').fill('60'); await page.locator('#formula').press('Enter');
   const reviewed = await saved(page);
-  expect(reviewed.english.articles[0].memory.recentPreInterventionMasteries).toEqual([.48, 0, 0, 0, 0]);
+  expect(reviewed.english.articles[0].memory.recentPreInterventionMasteries).toEqual([.8 * .55, 0, 0, 0, 0]);
   expect(reviewed.memory).toEqual(math);
   await page.clock.setSystemTime(new Date('2026-10-09T16:10:00Z'));
   await page.reload(); await page.locator('#sheet-select').selectOption('英语');
@@ -91,6 +91,6 @@ test('v3 upgrades without changing old curves and keeps a permanent backup', asy
   await page.evaluate(state => localStorage.setItem('kaoyan-panel-v1', JSON.stringify(state)), old);
   await page.reload();
   await expect(page.locator('#save-status')).toHaveText('已保存到本机');
-  expect(await saved(page)).toEqual({ ...old, version: 13, english: { articles: [] } });
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kaoyan-panel-before-initial-sixty-v3')))).toEqual(old);
+  expect(await saved(page)).toEqual({ ...old, version: 14, english: { articles: [] } });
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kaoyan-panel-before-initial-fifty-five-v3')))).toEqual(old);
 });
