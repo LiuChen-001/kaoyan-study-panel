@@ -64,13 +64,14 @@ npm run build
 | `tests/wrong-index.test.js` / `tests/wrong-index.spec.js` | 492 空记录迁移、稳定 ID、三行地址/公式、文本精度、同行填充及纵向拒绝、清空、自动保存和重启 | 实机文件系统故障 |
 | `tests/memory.test.js` | 日期、初学、原始预测历史、五次记录窗口、不规则间隔、跨日和精度边界 | 用户真实历史是否完整 |
 | `tests/cumulative.test.js` | 初始50%时的历史90%/96%校准、多轮累计、末次条件相同仍区分历史、间隔与掌握度独立作用、v6～v8 保留历史与题号迁移 | 个体真实记忆表现 |
+| `tests/forgetting-evaluation.test.js` / `tests/fixtures/forgetting-evaluation.json` | 初始60%的4组固定间隔、10次阈值复习、无复习和100天长间隔；npm run test:evaluation可单独复核 | 真实个人记忆表现 |
 | `tests/initial-sixty.test.js` / `tests/initial-sixty.spec.js` | 初学60%、同日及跨日、v11/v12仅迁移未复习节点、已复习历史及旧快照保留、重开幂等 | 任意手动损坏的旧记录 |
 | `tests/migration.test.js` | v2 可还原曲线重算、保留日期/输入、幂等、拒绝不可还原记录 | 任意复杂旧历史的回放 |
 | `tests/ui.spec.js` | 表格布局、408 密度、节点展开、编辑栏、精度、所有工作表、损坏记录保护 | Rust IPC 与 Windows 关闭事件 |
 | `tests/forgetting.spec.js` | 模拟北京时间午夜、禁止降低、未编辑不复习、离线重开、浏览器自动保存与迁移 | 实机时钟故障、断电写入恢复 |
 | `scripts/native-smoke.mjs` | 隔离WebView、当前初始率迁移与已复习曲线保留、题号保留、独立备份、横向填充及重启、英语精度与 Rust 保存、关闭提交、重开不重置 | 多进程并发及所有文件系统故障 |
 
-1.11.0当前有44项Node测试和36项Playwright测试。增删用例后更新覆盖说明，不把固定数量当作唯一验收标准。Playwright 会启动/复用 1420 端口服务，运行前确认复用的是本项目。
+当前有51项Node测试和36项Playwright测试。增删用例后更新覆盖说明，不把固定数量当作唯一验收标准。Playwright 会启动/复用 1420 端口服务，运行前确认复用的是本项目。
 
 原生验证必须按顺序执行，并逐步确认退出码成功：
 

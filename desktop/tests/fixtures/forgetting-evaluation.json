@@ -1,0 +1,138 @@
+{
+  "description": "Evaluation baseline from initial retention 0.6, independently computed with Python and Node mathematical implementations. Review coefficients and the 0.5 strength baseline are unchanged. All mastery and retention values are fractions, not percentages. Threshold reviews occur on the first natural day strictly below the threshold.",
+  "initialRetention": 0.6,
+  "masteryUnit": "fraction",
+  "schedules": [
+    {
+      "id": "daily-90",
+      "initialMastery": 0.9,
+      "reviewMastery": 0.9,
+      "gaps": [1, 1, 1],
+      "preMasteries": [0.54, 0.6805261388203743, 0.7770353563392357],
+      "retentions": [0.7561401542448603, 0.8633726181547063, 0.9285886682680914]
+    },
+    {
+      "id": "spaced-90",
+      "initialMastery": 0.9,
+      "reviewMastery": 0.9,
+      "gaps": [1, 2, 5],
+      "preMasteries": [0.54, 0.514573139575297, 0.5150259978795151],
+      "retentions": [0.7561401542448603, 0.8943702170279862, 0.9752131581532659]
+    },
+    {
+      "id": "daily-100",
+      "initialMastery": 1,
+      "reviewMastery": 1,
+      "gaps": [1, 1, 1],
+      "preMasteries": [0.6, 0.7737549860335106, 0.885914687260069],
+      "retentions": [0.7737549860335106, 0.885914687260069, 0.9470908323584886]
+    },
+    {
+      "id": "spaced-100",
+      "initialMastery": 1,
+      "reviewMastery": 1,
+      "gaps": [1, 2, 5],
+      "preMasteries": [0.6, 0.5986967784117181, 0.6388423109287199],
+      "retentions": [0.7737549860335106, 0.9142789785172456, 0.9834950267110492]
+    }
+  ],
+  "threshold": {
+    "initialMastery": 1,
+    "reviewMastery": 1,
+    "below": 0.5,
+    "reviews": [
+      {
+        "review": 1,
+        "gap": 2,
+        "day": 2,
+        "preMastery": 0.36,
+        "retention": 0.8117489400242622,
+        "nextGap": 4
+      },
+      {
+        "review": 2,
+        "gap": 4,
+        "day": 6,
+        "preMastery": 0.4341971023214045,
+        "retention": 0.9478392568903048,
+        "nextGap": 13
+      },
+      {
+        "review": 3,
+        "gap": 13,
+        "day": 19,
+        "preMastery": 0.49836897257844515,
+        "retention": 0.9771515294792881,
+        "nextGap": 30
+      },
+      {
+        "review": 4,
+        "gap": 30,
+        "day": 49,
+        "preMastery": 0.49987047312803046,
+        "retention": 0.9926770057822204,
+        "nextGap": 95
+      },
+      {
+        "review": 5,
+        "gap": 95,
+        "day": 144,
+        "preMastery": 0.4974579733429706,
+        "retention": 0.9981865580107908,
+        "nextGap": 382
+      },
+      {
+        "review": 6,
+        "gap": 382,
+        "day": 526,
+        "preMastery": 0.49989174324886065,
+        "retention": 0.9996023982098065,
+        "nextGap": 1743
+      },
+      {
+        "review": 7,
+        "gap": 1743,
+        "day": 2269,
+        "preMastery": 0.4999947253988383,
+        "retention": 0.9999157705870869,
+        "nextGap": 8229
+      },
+      {
+        "review": 8,
+        "gap": 8229,
+        "day": 10498,
+        "preMastery": 0.49999707468451704,
+        "retention": 0.999982295199982,
+        "nextGap": 39150
+      },
+      {
+        "review": 9,
+        "gap": 39150,
+        "day": 49648,
+        "preMastery": 0.49999906190410826,
+        "retention": 0.9999962846995062,
+        "nextGap": 186566
+      },
+      {
+        "review": 10,
+        "gap": 186566,
+        "day": 236214,
+        "preMastery": 0.49999857050220525,
+        "retention": 0.9999992206281058,
+        "nextGap": 889367
+      }
+    ]
+  },
+  "predictions": {
+    "initialMastery": 1,
+    "days": [0, 1, 2],
+    "masteries": [1, 0.6, 0.36]
+  },
+  "longGap": {
+    "initialMastery": 0.9,
+    "reviewMastery": 0.95,
+    "gap": 100,
+    "preMastery": 5.879867611500616e-23,
+    "retention": 0.500000000017319
+  }
+}

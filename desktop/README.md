@@ -23,6 +23,7 @@
 ```powershell
 npm ci
 npm test
+npm run test:evaluation
 npm run test:ui
 npm run dev
 ```
