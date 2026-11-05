@@ -12,6 +12,7 @@ import { isTauri } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { ENGLISH_SHEET, addArticle } from './english.js';
 import { wrongTextHTML, readWrongEditor, setWrongText } from './wrong-text.js';
+import { createHistory } from './history.js';
 import './style.css';
 
 const app = document.querySelector('#app');
@@ -33,6 +34,24 @@ const wrongIndexSheets = new Set();
 const editingOriginals = new WeakMap();
 let displayedDate = today();
 let showRetention = false;
+const history = createHistory();
+
+document.addEventListener('keydown', event => {
+  if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey || !['z', 'y'].includes(event.key.toLowerCase())) return;
+  const editor = event.target.closest('input, textarea, [contenteditable="true"]');
+  // Native text undo/redo owns shortcuts for the whole editing session.
+  if (editor && !editor.readOnly && !editor.disabled) return;
+  event.preventDefault();
+  if (loadError || fillDrag || document.querySelector('dialog[open]')) return;
+  try {
+    const next = history.restore(state, event.key.toLowerCase() === 'z' ? 'undo' : 'redo', next => validateState(data, next));
+    if (!next) return;
+    state = next; wrongSelection = null;
+    refreshValues(); selectCell(selected);
+    document.querySelector('#input-error').textContent = '';
+    persist();
+  } catch (error) { document.querySelector('#input-error').textContent = error.message; }
+});
 
 const memoryFor = binding => binding?.type === 'article-mastery'
   ? state.english.articles.find(article => article.id === binding.id)?.memory : state.memory[binding?.id];
@@ -92,6 +111,7 @@ function commitRetention(input) {
     if (binding.type === 'mastery') state.memory[binding.id] = next;
     else state.english.articles.find(article => article.id === binding.id).memory = next;
     validateState(data, state);
+    history.record(before, state);
     document.querySelector('#input-error').textContent = '';
     refreshValues(); persist();
   } catch (error) { state = before; document.querySelector('#input-error').textContent = error.message; }
@@ -123,7 +143,7 @@ function commitWrongEditor(editor) {
   const before = structuredClone(state);
   try {
     setWrongText(state, id, text, runs);
-    validateState(data, state); refreshValues(); persist();
+    validateState(data, state); history.record(before, state); refreshValues(); persist();
     document.querySelector('#input-error').textContent = '';
   } catch (error) { state = before; document.querySelector('#input-error').textContent = error.message; }
 }
@@ -289,7 +309,7 @@ function commit(address, raw, original) {
     if (binding.type === 'wrong-question') {
       wrongSelection = null;
       setWrongText(state, binding.id, raw);
-      validateState(data, state); refreshValues();
+      validateState(data, state); history.record(before, state); refreshValues();
       document.querySelector('#input-error').textContent = ''; persist(); return;
     }
     if (binding.type === 'article-title') {
@@ -311,6 +331,7 @@ function commit(address, raw, original) {
     if (binding.type === 'annual') state.annual[binding.id][binding.year] = value;
     if (binding.type === 'weight') state.weights.cs[binding.year] = value;
     validateState(data, state);
+    history.record(before, state);
     refreshValues();
     document.querySelector('#input-error').textContent = ''; persist();
   } catch (error) { state = before; document.querySelector('#input-error').textContent = error.message; }
@@ -376,10 +397,12 @@ app.addEventListener('pointerup', event => {
   if (!fillDrag) return;
   fillDrag.x = event.clientX; fillDrag.y = event.clientY; updateFillPreview();
   const { targets, value, runs } = fillDrag;
+  const before = structuredClone(state);
   const changed = targets.some(address => state.wrongQuestions[values[address].binding.id] !== value || JSON.stringify(state.wrongQuestionFormats[values[address].binding.id]) !== JSON.stringify(runs));
   for (const address of targets) setWrongText(state, values[address].binding.id, value, runs);
   cancelFill();
   if (changed) {
+    history.record(before, state);
     refreshValues(); document.querySelector('#input-error').textContent = ''; persist();
   }
 });

@@ -1,7 +1,9 @@
 # 项目维护入口
 
 考研面板把数学（一）和 408 工作簿转为离线 Tauri 桌面应用。
-当前正式应用 1.13.0，学习记录 version 15；开发入口见 [desktop/docs/README.md](desktop/docs/README.md)。
+当前正式应用 1.14.0，学习记录 version 15；开发入口见 [desktop/docs/README.md](desktop/docs/README.md)。
+
+1.14.0支持Ctrl+Z/Y最多10步操作撤销恢复，编辑框内原生文字撤销优先；历史仅本次运行，恢复结果自动保存。只记录掌握度、记忆率和错题文本/格式字段，拖拽填充按一步；不回退不相关字段。见desktop/docs/undo-redo.md。
 
 1.13.0手动校正使用可选manualCurveDate作有效曲线起点；真实学习日期与历史保留。v14→v15只升级版本不重算；后续复习消耗校正起点并存入origin供同日覆盖。完整规则见desktop/docs/manual-retention.md。
 

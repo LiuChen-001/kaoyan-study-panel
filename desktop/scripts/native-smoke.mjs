@@ -177,6 +177,12 @@ try {
   await page.waitForFunction(() => document.querySelector('#save-status')?.textContent === '已保存到本机');
   const corrected = JSON.parse(await readFile(join(appDir, 'progress.json'), 'utf8'));
   assert.deepEqual(corrected.english.articles[0].memory, setRetention(persisted.english.articles[0].memory, 95, date));
+  await page.locator('[data-cell="A1"]').click(); await page.keyboard.press('Control+z');
+  await page.waitForFunction(() => document.querySelector('#save-status')?.textContent === '已保存到本机');
+  assert.deepEqual(JSON.parse(await readFile(join(appDir, 'progress.json'), 'utf8')).english.articles[0].memory, persisted.english.articles[0].memory);
+  await page.keyboard.press('Control+y');
+  await page.waitForFunction(() => document.querySelector('#save-status')?.textContent === '已保存到本机');
+  assert.deepEqual(JSON.parse(await readFile(join(appDir, 'progress.json'), 'utf8')), corrected);
   const manualExit = new Promise(resolve => child.once('exit', resolve));
   await page.evaluate(() => window.__TAURI_INTERNALS__.invoke('plugin:window|close', { label: 'main' })).catch(() => {});
   await Promise.race([manualExit, new Promise((_, reject) => setTimeout(() => reject(new Error('Manual retention close timeout')), 10000))]);

@@ -1,6 +1,6 @@
 # 桌面应用架构
 
-适用版本：1.13.0。应用是 Windows 上离线运行的 Tauri 2 程序，前端使用原生 JavaScript ES Modules 与 Vite，没有 React/Vue、服务端或数据库。Rust 负责本地文件读写，业务计算在前端纯函数中完成。新增manualCurveDate保存手动校正起点，见[校正说明](manual-retention.md)。
+适用版本：1.14.0。应用是 Windows 上离线运行的 Tauri 2 程序，前端使用原生 JavaScript ES Modules 与 Vite，没有 React/Vue、服务端或数据库。Rust 负责本地文件读写，业务计算在前端纯函数中完成。manualCurveDate保存手动校正起点，见[校正说明](manual-retention.md)；history.js按受支持字段记录最近10步操作，见[撤销恢复](undo-redo.md)。
 
 ## 1. 系统边界与数据来源
 
