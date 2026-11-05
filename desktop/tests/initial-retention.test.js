@@ -39,7 +39,7 @@ test('v12 changes only initial-only rates across both subjects and English, pres
   old.wrongQuestionFormats['math:F5'] = [{ text: '题号' }, { text: '003', bold: true, color: '#c00000' }];
   const before = structuredClone(old);
   const next = migrateState(data, old);
-  const expected = structuredClone(old); expected.version = 14;
+  const expected = structuredClone(old); expected.version = 15;
   for (const id of ['math:F5', 'cs:F5']) expected.memory[id].retentionPerDay = .55;
   expected.english.articles[0].memory.retentionPerDay = .55;
   assert.deepEqual(next, expected);
@@ -61,7 +61,7 @@ test('v11 also preserves reviewed curves and initializes format storage while up
   assert.deepEqual(next.memory['math:F5'], { ...old.memory['math:F5'], retentionPerDay: .55 });
   assert.deepEqual(next.memory['cs:F5'], old.memory['cs:F5']);
   assert.deepEqual(next.wrongQuestionFormats, {});
-  assert.equal(next.version, 14);
+  assert.equal(next.version, 15);
 });
 
 test('v13 lowers only unreviewed 60% curves to 55%, preserving every reviewed field and same-day origin', () => {
@@ -73,7 +73,7 @@ test('v13 lowers only unreviewed 60% curves to 55%, preserving every reviewed fi
   old.memory['cs:F5'] = structuredClone(pending);
   old.english.articles = [{ id: 'initial', title: 'Initial', memory: structuredClone(pending) }, { id: 'reviewed', title: 'Reviewed', memory: structuredClone(reviewed) }];
   const before = structuredClone(old), expected = structuredClone(old);
-  expected.version = 14;
+  expected.version = 15;
   expected.memory['math:F5'].retentionPerDay = .55;
   expected.memory['cs:F5'].retentionPerDay = .55;
   expected.english.articles[0].memory.retentionPerDay = .55;

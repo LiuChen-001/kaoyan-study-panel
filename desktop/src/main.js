@@ -5,7 +5,7 @@
    Stable node IDs own the data; expanded addresses are presentation only. */
 import data from './data.json';
 import { initialState, validateState, migrateState } from './model.js';
-import { today, review } from './memory.js';
+import { today, review, setRetention, curveDate, daysBetween } from './memory.js';
 import { columnName, coordinates, sheetValues, displayValue as formattedValue, sheetLayout, sheetNames } from './workbook.js';
 import { loadState, saveState, loadMigrationHistory } from './storage.js';
 import { isTauri } from '@tauri-apps/api/core';
@@ -69,6 +69,33 @@ function persist() {
   });
 }
 const rawValue = cell => cell?.value == null ? '' : cell.binding?.type === 'weight' ? String(cell.value * 100) : String(cell.value);
+function updateRetentionEditor() {
+  const group = document.querySelector('#retention-editor');
+  if (!group) return;
+  const binding = values[selected]?.binding;
+  group.hidden = !isMastery(binding);
+  const memory = memoryFor(binding);
+  const input = document.querySelector('#retention-input');
+  input.disabled = !memory || !!loadError;
+  if (document.activeElement !== input) input.value = memory ? String(memory.retentionPerDay * 100) : '';
+  document.querySelector('#curve-days').textContent = memory ? `τ = ${Math.max(0, daysBetween(curveDate(memory), today()))} 天` : '未初学';
+}
+function commitRetention(input) {
+  const binding = values[selected]?.binding;
+  if (!isMastery(binding) || loadError || input.value === editingOriginals.get(input)) return;
+  const before = structuredClone(state);
+  try {
+    const memory = memoryFor(binding);
+    const value = input.value.trim() ? Number(input.value.replace(/%$/, '')) : NaN;
+    if (value === memory?.retentionPerDay * 100) return;
+    const next = setRetention(memory, value);
+    if (binding.type === 'mastery') state.memory[binding.id] = next;
+    else state.english.articles.find(article => article.id === binding.id).memory = next;
+    validateState(data, state);
+    document.querySelector('#input-error').textContent = '';
+    refreshValues(); persist();
+  } catch (error) { state = before; document.querySelector('#input-error').textContent = error.message; }
+}
 
 let wrongSelection = null;
 function updateFormatControls() {
@@ -159,6 +186,7 @@ function refreshValues(date = today()) {
   const dateLabel = document.querySelector('#memory-date');
   if (dateLabel) dateLabel.textContent = `${date} · 北京时间每日遗忘`;
   fitRetentionReadouts();
+  updateRetentionEditor();
 }
 
 function selectCell(address, focus = false) {
@@ -174,6 +202,7 @@ function selectCell(address, focus = false) {
   const memory = memoryFor(item?.binding);
   document.querySelector('#cell-hint').textContent = item?.binding ? isMastery(item.binding) ? memory ? `仅可提高掌握度 · 上次学习 ${memory.lastInterventionDate} · 每日保留 ${(memory.retentionPerDay * 100).toFixed(2)}%` : '尚未初学 · 首次输入大于 0 的掌握度后开始遗忘' : item.binding.type === 'wrong-question' ? '错题题号：可填写资料名、页码和题号 · 拖动右下角向右填充同一行' : item.binding.type === 'article-title' ? '文章名称：修改名称不会重置学习记录' : item.binding.type === 'weight' ? '权重：按百分数输入，例如 9 表示 9%' : '年度小节得分：修改后自动计算' : item?.formula ? '公式单元格 · 自动计算' : activeSheet === ENGLISH_SHEET && state.english.articles.length === 0 ? '点击“增加文章”填写名称，初始掌握度为 0' : '只读单元格 · 完整内容见编辑栏';
   updateFormatControls();
+  updateRetentionEditor();
   if (focus) { (cell.querySelector('input, [contenteditable]') ?? cell).focus(); cell.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
 }
 
@@ -231,7 +260,7 @@ function render() {
   app.innerHTML = `<header class="titlebar"><span class="app-icon" aria-hidden="true">▦</span><h1>考研综合面板</h1><span class="filename">考研综合面板.xlsx · 桌面版</span><span id="save-status" role="status"></span></header>
     <div class="toolbar"><label>工作表 <select id="sheet-select" aria-label="选择工作表">${sheets.map(name => `<option ${name === activeSheet ? 'selected' : ''}>${escape(name)}</option>`).join('')}</select></label><span class="separator"></span>${activeSheet.endsWith('分数面板') ? `<button id="wrong-index" aria-pressed="${wrongIndexSheets.has(activeSheet)}" aria-expanded="${wrongIndexSheets.has(activeSheet)}" aria-controls="grid">错题索引</button>` : ''}${activeSheet.endsWith('分数面板') ? `<span class="wrong-format-controls" role="group" aria-label="错题文字格式"><button id="wrong-bold" aria-label="加粗选中的错题文字（Ctrl+B）" title="加粗（Ctrl+B）" aria-pressed="false" disabled><b>B</b></button><label class="color-control" title="修改选中的错题文字颜色">字体颜色<input id="wrong-color" type="color" value="#c00000" aria-label="错题文字颜色" disabled></label></span>` : ''}${activeSheet === ENGLISH_SHEET ? `<button id="add-article" ${loadError ? 'disabled' : ''}>增加文章</button>` : ''}${activeSheet.endsWith('分数面板') || activeSheet === ENGLISH_SHEET ? `<button id="show-retention" aria-pressed="${showRetention}" aria-controls="grid">显示记忆率</button>` : ''}<span class="precision">${activeSheet === ENGLISH_SHEET ? '完整精度计算 · 掌握度和词数截去小数' : '完整精度计算 · 显示两位小数'}</span></div>
     ${loadError ? `<div class="error-banner" role="alert">无法读取记录：${escape(loadError)}。编辑已停用，请关闭程序后检查本地 progress.json 或恢复有效文件备份。</div>` : ''}
-    <div class="formula-bar"><input id="address" aria-label="单元格地址" value="${selected}"><span class="fx">fx</span><input id="formula" aria-label="单元格内容或公式" readonly></div>
+    <div class="formula-bar"><input id="address" aria-label="单元格地址" value="${selected}"><span class="fx">fx</span><input id="formula" aria-label="单元格内容或公式" readonly><span id="retention-editor" hidden><label for="retention-input">记忆率</label><input id="retention-input" aria-label="记忆率（百分比）" inputmode="decimal" title="修改后起始掌握度设为100%，按整数天重算当前掌握度"><span>%</span><span id="curve-days"></span></span></div>
     <div id="input-error" role="alert"></div><main id="grid" aria-label="工作表网格"></main>
     <div class="sheet-strip"><span class="sheet-symbol" aria-hidden="true">☷</span><nav aria-label="工作表标签">${sheets.map(name => `<button data-sheet="${escape(name)}" class="${name === activeSheet ? 'active' : ''}" aria-pressed="${name === activeSheet}">${escape(name)}</button>`).join('')}</nav></div>
     <footer><span id="sheet-info"></span><span id="memory-date">${displayedDate} · 北京时间每日遗忘</span><span id="cell-hint"></span></footer>
@@ -401,10 +430,11 @@ app.addEventListener('focusin', event => {
   const address = event.target.dataset.edit;
   if (event.target.dataset.wrong) { selectCell(address); return; }
   if (address) { refreshValues(); selectCell(address); event.target.value = rawValue(values[address]); event.target.select(); }
-  if (address || event.target.id === 'formula') editingOriginals.set(event.target, event.target.value);
+  if (address || event.target.id === 'formula' || event.target.id === 'retention-input') editingOriginals.set(event.target, event.target.value);
 });
 app.addEventListener('focusout', event => {
   const address = event.target.dataset.edit;
+  if (event.target.id === 'retention-input') updateRetentionEditor();
   if (event.target.dataset.wrong) { commitWrongEditor(event.target); return; }
   if (address) { event.target.value = displayValue(activeSheet, address, values[address]); fitRetentionReadouts(); }
 });
@@ -412,6 +442,7 @@ app.addEventListener('change', event => {
   const input = event.target;
   if (input.dataset.edit && !input.dataset.wrong) commit(input.dataset.edit, input.value, editingOriginals.get(input));
   if (input.id === 'formula') commit(selected, input.value, editingOriginals.get(input));
+  if (input.id === 'retention-input') commitRetention(input);
   if (input.id === 'sheet-select') switchSheet(input.value);
   if (input.id === 'address') {
     const address = input.value.trim().toUpperCase();
@@ -421,6 +452,11 @@ app.addEventListener('change', event => {
 
 });
 app.addEventListener('keydown', event => {
+  if (event.target.id === 'retention-input') {
+    if (event.key === 'Escape') { event.target.value = editingOriginals.get(event.target); event.target.blur(); }
+    if (event.key === 'Enter') { event.preventDefault(); event.target.blur(); }
+    return;
+  }
   if (event.key === 'Escape' && fillDrag) { cancelFill(); return; }
   if (event.key === 'Escape' && event.target.matches('td.node-name')) {
     event.target.classList.remove('selected'); event.target.blur(); return;

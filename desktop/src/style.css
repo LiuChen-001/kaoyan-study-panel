@@ -25,6 +25,10 @@ select { max-width: 245px; background: white; border: 1px solid #aebac6; padding
 #address { width: 83px; text-align: center; }
 .fx { display: grid; place-items: center; width: 35px; font-family: Georgia, serif; font-style: italic; font-size: 18px; color: #606b76; }
 #formula { flex: 1; min-width: 0; }
+#retention-editor { display: flex; align-items: center; gap: 6px; }
+#retention-editor[hidden] { display: none; }
+#retention-input { width: 155px; color: #c00000; }
+#curve-days { min-width: 75px; color: #586777; }
 #grid { flex: 1; min-height: 0; overflow: auto; position: relative; background: #fff; }
 .worksheet { table-layout: fixed; border-collapse: separate; border-spacing: 0; }
 .worksheet th, .worksheet td { padding: 0; border-right: 1px solid #d4d9de; border-bottom: 1px solid #d4d9de; }

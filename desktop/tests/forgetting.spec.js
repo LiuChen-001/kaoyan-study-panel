@@ -68,7 +68,7 @@ test('v2 upgrade recalculates the current curve once and preserves a recoverable
   await expect(page.locator('#save-status')).toHaveText('已保存到本机');
   await expect(input(page)).toHaveValue('70.20');
   const migrated = await state(page);
-  expect(migrated.version).toBe(14);
+  expect(migrated.version).toBe(15);
   expect(migrated.memory['math:F5'].retentionPerDay).toBeCloseTo(0.7020287504089231, 14);
   expect(migrated.memory['math:F5'].lastInterventionDate).toBe('2026-10-06');
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kaoyan-panel-before-initial-fifty-five-v2')))).toEqual(previous);

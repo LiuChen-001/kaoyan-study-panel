@@ -5,7 +5,7 @@ import { readFile, writeFile, rm, mkdir } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import assert from 'node:assert/strict';
 import { initialState, migrateState } from '../src/model.js';
-import { today, initializeMemory, review } from '../src/memory.js';
+import { today, initializeMemory, review, setRetention } from '../src/memory.js';
 import { legacyInitializeMemory } from '../tests/legacy-fixtures.js';
 
 const appDir = join(process.env.APPDATA, 'cn.kaoyan.study-panel.verification');
@@ -92,7 +92,7 @@ try {
   const saved = JSON.parse(await readFile(join(appDir, 'progress.json'), 'utf8'));
   assert.equal(saved.memory['math:F5'].baseMastery, 0.7325);
   assert.equal(await page.locator('[data-cell="F5"] .mastery-value').textContent(), '73.25');
-  assert.equal(saved.version, 14);
+  assert.equal(saved.version, 15);
   assert.deepEqual(saved.memory['math:F5'], review(legacyInitializeMemory(80, yesterday), 73.25, date));
   await page.locator('#wrong-index').click();
   const reference = '高数资料 P028：003、7、12';
@@ -171,6 +171,25 @@ try {
   assert.equal(await page.locator('[data-cell="B1"]').textContent(), '0.89');
   assert.equal(await page.locator('[data-cell="D1"]').textContent(), '355');
   await page.screenshot({ path: 'test-results/native-desktop.png' });
+  await page.locator('[data-edit="C3"]').click();
+  await page.locator('#retention-input').fill('95');
+  await page.locator('#retention-input').press('Enter');
+  await page.waitForFunction(() => document.querySelector('#save-status')?.textContent === '已保存到本机');
+  const corrected = JSON.parse(await readFile(join(appDir, 'progress.json'), 'utf8'));
+  assert.deepEqual(corrected.english.articles[0].memory, setRetention(persisted.english.articles[0].memory, 95, date));
+  const manualExit = new Promise(resolve => child.once('exit', resolve));
+  await page.evaluate(() => window.__TAURI_INTERNALS__.invoke('plugin:window|close', { label: 'main' })).catch(() => {});
+  await Promise.race([manualExit, new Promise((_, reject) => setTimeout(() => reject(new Error('Manual retention close timeout')), 10000))]);
+  await browser.close().catch(() => {});
+  page = await launch();
+  assert.deepEqual(JSON.parse(await readFile(join(appDir, 'progress.json'), 'utf8')), corrected);
+  await page.locator('#sheet-select').selectOption('英语');
+  await page.locator('[data-edit="C3"]').click();
+  assert.equal(await page.locator('#retention-input').inputValue(), '95');
+  await page.locator('#formula').fill('100'); await page.locator('#formula').press('Enter');
+  await page.waitForFunction(() => document.querySelector('#save-status')?.textContent === '已保存到本机');
+  const afterManual = JSON.parse(await readFile(join(appDir, 'progress.json'), 'utf8'));
+  assert.deepEqual(afterManual.english.articles[0].memory, review(corrected.english.articles[0].memory, 100, date));
   assert.deepEqual(errors, []);
   console.log('Native release: v13 initial-fifty-five migration, backup, math/408 text persistence, horizontal fill, English precision, dual-color rate view, removed controls, close-flush, restart and same-day replacement passed.');
 } finally {

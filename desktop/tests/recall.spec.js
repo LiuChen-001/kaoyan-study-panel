@@ -23,7 +23,7 @@ test('v9 upgrade corrects a 100-day review immediately, preserving history and b
   await page.reload();
   await expect(page.locator('#save-status')).toHaveText('已保存到本机');
   const next = await state(page);
-  expect(next.version).toBe(14);
+  expect(next.version).toBe(15);
   expect(next.memory['math:F5'].retentionPerDay).toBeCloseTo(.5, 13);
   expect(next.memory['math:F5'].recentPreInterventionMasteries).toEqual(old.recentPreInterventionMasteries);
   expect(next.memory['math:F5'].reviewOrigin).toEqual(old.reviewOrigin);

@@ -1,4 +1,6 @@
 # 考研综合面板
+
+1.13.0增加公式栏记忆率编辑与τ显示。手动修改记忆率按当前掌握度反推整数天、R重设100%，后续复习沿用新曲线；自动保存，v14迁移v15不改原曲线。见[完整交互及边界](docs/manual-retention.md)。
 <!-- impeccable:product-schema 1 -->
 
 ## Platform

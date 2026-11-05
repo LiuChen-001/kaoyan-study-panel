@@ -1,6 +1,6 @@
 # 考研综合面板 · 桌面源码
 
-本目录是 Tauri 2 Windows 桌面程序源码，前端使用原生 JavaScript 和 Vite，Rust负责本地文件保存。当前正式版为 **1.12.0**，学习记录格式为 **version 14**。
+本目录是 Tauri 2 Windows 桌面程序源码，前端使用原生 JavaScript 和 Vite，Rust负责本地文件保存。当前正式版为 **1.13.0**，学习记录格式为 **version 15**。新增[手动记忆率校正](docs/manual-retention.md)。
 
 使用者请从[日常使用 README](../README.md)和[面板构建底层逻辑](../面板构建底层逻辑.md)开始。已构建的程序位于[桌面应用目录](../桌面应用/)，无需安装开发工具即可使用。
 

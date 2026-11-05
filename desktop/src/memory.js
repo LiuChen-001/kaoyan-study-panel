@@ -15,6 +15,23 @@ function dayNumber(date) {
   return value / DAY_MS;
 }
 export function daysBetween(start, end) { return dayNumber(end) - dayNumber(start); }
+export const curveDate = memory => memory.manualCurveDate ?? memory.lastInterventionDate;
+
+export function setRetention(memory, percent, date = today()) {
+  if (!memory) throw new Error('请先输入掌握度开始初学，再修改记忆率');
+  validateMemory(memory, true, true);
+  const p = percent / 100;
+  if (!Number.isFinite(p) || !(p > 0 && p < 1)) throw new Error('记忆率必须大于0%且小于100%');
+  if (daysBetween(curveDate(memory), date) < 0) throw new Error('系统日期早于曲线起点');
+  const q = predictMastery(memory, date);
+  if (!(q > 0)) throw new Error('当前掌握度已为0，无法反推有限天数，请先复习提高掌握度');
+  const tau = Math.floor(Math.log(q) / Math.log(p));
+  const stamp = (dayNumber(date) - tau) * DAY_MS;
+  if (!Number.isSafeInteger(tau) || !Number.isFinite(stamp) || Math.abs(stamp) > 8640000000000000) throw new Error('反推天数超出可保存范围');
+  const manualCurveDate = new Date(stamp).toISOString().slice(0, 10);
+  dayNumber(manualCurveDate);
+  return { ...memory, baseMastery: 1, retentionPerDay: p, manualCurveDate, reviewOrigin: null };
+}
 
 export function initializeMemory(percent, date = today()) {
   dayNumber(date);
@@ -28,6 +45,7 @@ export function validateMemory(memory, requireOrigin = false, requireDates = fal
   if (!memory || !fraction(memory.baseMastery) || memory.baseMastery === 0 || !fraction(memory.retentionPerDay) || memory.retentionPerDay === 0 || memory.retentionPerDay === 1 || !Array.isArray(memory.recentPreInterventionMasteries) || memory.recentPreInterventionMasteries.length !== 5 || !memory.recentPreInterventionMasteries.every(fraction)) throw new Error('节点遗忘曲线记录无效');
   if (daysBetween(memory.initialLearnedDate, memory.lastInterventionDate) < 0) throw new Error('复习日期不能早于初学日期');
   if (requireOrigin && !Object.hasOwn(memory, 'reviewOrigin')) throw new Error('缺少按日覆盖记录');
+  if (Object.hasOwn(memory, 'manualCurveDate')) dayNumber(memory.manualCurveDate);
   if (requireDates) {
     const dates = memory.recentReviewDates;
     if (!Array.isArray(dates) || dates.length > 5) throw new Error('缺少最近复习日期');
@@ -40,17 +58,17 @@ export function validateMemory(memory, requireOrigin = false, requireDates = fal
     const origin = memory.reviewOrigin;
     if (Object.hasOwn(origin, 'reviewOrigin')) throw new Error('复习起点不能嵌套历史快照');
     validateMemory(origin, false, requireDates);
-    if (origin.initialLearnedDate !== memory.initialLearnedDate || daysBetween(origin.lastInterventionDate, memory.lastInterventionDate) < 1) throw new Error('相邻干预日期必须至少相隔一天');
+    if (origin.initialLearnedDate !== memory.initialLearnedDate || daysBetween(curveDate(origin), memory.lastInterventionDate) < 1) throw new Error('相邻干预日期必须至少相隔一天');
   }
 }
 function curveSnapshot(memory) {
   const { initialLearnedDate, lastInterventionDate, baseMastery, retentionPerDay, recentPreInterventionMasteries, recentReviewDates } = memory;
-  return { initialLearnedDate, lastInterventionDate, baseMastery, retentionPerDay, recentPreInterventionMasteries: [...recentPreInterventionMasteries], recentReviewDates: [...recentReviewDates] };
+  return { initialLearnedDate, lastInterventionDate, baseMastery, retentionPerDay, recentPreInterventionMasteries: [...recentPreInterventionMasteries], recentReviewDates: [...recentReviewDates], ...(memory.manualCurveDate ? { manualCurveDate: memory.manualCurveDate } : {}) };
 }
 export function predictMastery(memory, date = today()) {
   if (!memory) return 0;
   // A rolled-back system clock must never extrapolate before the curve origin.
-  const elapsed = Math.max(0, daysBetween(memory.lastInterventionDate, date));
+  const elapsed = Math.max(0, daysBetween(curveDate(memory), date));
   return memory.baseMastery * Math.pow(memory.retentionPerDay, elapsed);
 }
 export function currentMastery(state, id, date = today()) {
@@ -60,13 +78,13 @@ export function review(memory, percent, date = today()) {
   if (!Number.isFinite(percent) || percent <= 0 || percent > 100) throw new Error('复习后掌握度必须大于当前值且不超过 100');
   if (!memory) return initializeMemory(percent, date);
   validateMemory(memory, true, true);
-  const tau = daysBetween(memory.lastInterventionDate, date);
+  const tau = daysBetween(curveDate(memory), date);
   const total = daysBetween(memory.initialLearnedDate, date);
   if (tau < 0 || total < 0) throw new Error('系统日期早于学习记录，请校正系统日期后再复习');
   const pre = predictMastery(memory, date);
   const next = percent / 100;
   if (percent <= pre * 100 || next <= pre) throw new Error('只能提高当前预测掌握度；降低或保持原值不计为复习');
-  if (total === 0) return { ...memory, baseMastery: next, retentionPerDay: INITIAL_RETENTION };
+  if (total === 0 && !memory.manualCurveDate && !memory.reviewOrigin) return { ...memory, baseMastery: next, retentionPerDay: INITIAL_RETENTION };
   if (tau === 0) {
     const origin = memory.reviewOrigin;
     if (!origin) throw new Error('旧记录缺少当天修改前的曲线，无法准确覆盖；原记录已保留，次日可继续复习');
@@ -76,13 +94,15 @@ export function review(memory, percent, date = today()) {
 }
 
 function applyReview(origin, next, date) {
-  const tau = daysBetween(origin.lastInterventionDate, date);
+  const tau = daysBetween(curveDate(origin), date);
   if (tau < 1) throw new Error('相邻干预日期必须至少相隔一天');
   const pre = predictMastery(origin, date);
   const r = pre;
-  const history = [r, ...origin.recentPreInterventionMasteries.slice(0, 4)];
+  const earlier = origin.recentReviewDates[0] === date ? origin.recentPreInterventionMasteries.slice(1) : origin.recentPreInterventionMasteries;
+  const history = [r, ...earlier].slice(0, 5);
   const retention = updatedRetention(origin.retentionPerDay, next, tau, pre);
-  return { ...origin, lastInterventionDate: date, baseMastery: next, retentionPerDay: retention, recentPreInterventionMasteries: history, recentReviewDates: [date, ...origin.recentReviewDates].slice(0, 5), reviewOrigin: curveSnapshot(origin) };
+  const { manualCurveDate, ...previous } = origin;
+  return { ...previous, lastInterventionDate: date, baseMastery: next, retentionPerDay: retention, recentPreInterventionMasteries: history, recentReviewDates: [date, ...origin.recentReviewDates.filter(d => d !== date)].filter(d => d !== origin.initialLearnedDate).slice(0, 5), reviewOrigin: curveSnapshot(origin) };
 }
 
 export function updatedRetention(oldP, next, tau, pre) {

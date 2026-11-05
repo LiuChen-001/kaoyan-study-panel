@@ -25,7 +25,7 @@ test('v13 migration updates only never-reviewed curves from their original dates
   legacy.wrongQuestionFormats['math:F5'] = [{ text: 'P028：' }, { text: '003', bold: true, color: '#c00000' }];
   legacy.annual['math:4']['2025'] = 6.789;
   legacy.weights.cs['2025'] = .175;
-  const expected = structuredClone(legacy); expected.version = 14;
+  const expected = structuredClone(legacy); expected.version = 15;
   expected.memory['math:F5'].retentionPerDay = .55;
   expected.memory['cs:F5'].retentionPerDay = .55;
   expected.english.articles[0].memory.retentionPerDay = .55;
